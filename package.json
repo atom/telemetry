@@ -9,6 +9,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "request": "^2.85.0",
+    "request-promise": "^4.2.2",
     "typescript": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/request-promise": "^4.1.41"
   }
 }
