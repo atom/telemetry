@@ -1,4 +1,12 @@
+const electron = require('electron');
 const rp = require("request-promise");
+
+import { remote } from "electron";
+
+const app = electron.app;
+const browserWindow = electron.remote;
+
+const storage = browserWindow.process.localStorage;
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -30,10 +38,10 @@ interface ICalculatedStats {
   readonly eventType: "usage";
 }
 
-// this might need to be a string instead of an enum since this interface 
-// needs to be accessible outside of TypeScript and I'm not sure how enums
-// work in that regard.
-enum AppName {
+/** The goal is for this package to be app-agnostic so we can add
+ * other editors in the future.
+ */
+export enum AppName {
   Atom = 'Atom',
 };
 
@@ -42,28 +50,18 @@ export class StatsStore {
   /** Has the user opted out of stats reporting? */
   private optOut: boolean;
 
-  /** Name of the app we're reporting stats for. */
-  private appName: AppName;
-
   private appUrl: String;
 
   public constructor(appName: AppName) {
-    this.appName = appName;
     this.appUrl = baseUsageApi + appName;
-    let optOutValue;
-    try {
-      // local storage may not exist if we are running this somewhere without localStorage
-      // (such as in test mode)
-      optOutValue = localStorage.getItem(StatsOptOutKey);
-    } catch (exception) {
-      optOutValue = null;
-    }
+    const optOutValue = storage.getItem(StatsOptOutKey);
+
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
-      if (!localStorage.getItem(HasSentOptInPingKey)) {
+      if (!storage.getItem(HasSentOptInPingKey)) {
         // this.sendOptInStatusPing(!this.optOut);
       }
     } else {
@@ -72,11 +70,14 @@ export class StatsStore {
   }
 
   public async reportStats() {
+    // todo: obviously replace this with a real stats event.
     const stats = {foo: "bazz"};
+
+    console.log(this.optOut); // stupid unused variables linter
     await this.post(stats).then((response) => {
       console.log("RESPONSE", response);
       if (!response.ok) {
-        console.log("zomg");
+        console.log("Stats successfully logged");
       }
     }).catch((error) => {
       console.log(error);
@@ -99,10 +100,12 @@ export class StatsStore {
     return now - lastDate > DailyStatsReportInterval;
   }
 
-  /** Post some data to our stats endpoint. */
-  private async post(body: object): Promise<Response> {
+  /** Post some data to our stats endpoint. 
+   * This is public for testing purposes only.
+  */
+  public async post(body: object): Promise<Response> {
     const options = {
-      url: baseUsageApi,
+      url: this.appUrl,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
