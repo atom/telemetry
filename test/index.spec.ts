@@ -2,6 +2,10 @@ import { expect, assert } from "chai";
 import { AppName, StatsStore } from "../src/index";
 import { LocalStorageWorker } from "../src/storage-helper";
 import * as sinon from 'sinon';
+import * as chai from 'chai';
+import * as chaiAsPromised from 'chai-as-promised';
+
+chai.use(chaiAsPromised);
 
 describe("StatsStore", () => {
     const store = new StatsStore(AppName.Atom);
@@ -17,7 +21,7 @@ describe("StatsStore", () => {
 
         it("Handle failure case", async () => {
             const stub = sinon.stub(store, 'post').rejects('not ok');
-            await expect(async () => await store.reportStats()).to.throw();
+            expect(async () => await store.reportStats()).to.be.rejectedWith;
             stub.restore();
         });
     })

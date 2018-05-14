@@ -77,17 +77,17 @@ export class StatsStore {
     // todo: obviously replace this with a real stats event.
     const stats = {foo: "bazz"};
 
-    console.log(this.optOut); // stupid unused variables linter
-    await this.post(stats).then((response) => {
-      console.log("RESPONSE", response);
-      if (response.ok) {
-        console.log("Stats successfully logged");
+    try {
+      const response = await this.post(stats);
+      if (!response.ok) {
+        throw new Error(`Unexpected status: ${response.statusText} (${response.status})`);
       }
-    }).catch((error) => {
-      console.log("Stats logging failed");
-      console.log(error);
-      throw new Error('omg');
-    });
+      else {
+        console.log('stats successfully reported');
+      }
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   /** Should the app report its daily stats? */
