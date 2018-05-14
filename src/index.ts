@@ -3,14 +3,16 @@ const rp = require("request-promise");
 
 import { remote } from "electron";
 
+// is there a way to say "start an app if an app process doesn't exist (ie during testing)"
+// but use existing electron process if one does exist?  Ugh, IDK.
 const app = electron.app;
 const browserWindow = electron.remote;
 
-const storage = browserWindow.process.localStorage;
+const storage = browserWindow.process.localStorage || localStorage;
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
-const baseUsageApi = "http://localhost:4000/api/usage/atom";
+const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
 
@@ -42,7 +44,7 @@ interface ICalculatedStats {
  * other editors in the future.
  */
 export enum AppName {
-  Atom = 'Atom',
+  Atom = 'atom',
 };
 
 export class StatsStore {
@@ -115,5 +117,5 @@ export class StatsStore {
   }
 }
 
-const store = new StatsStore(AppName.Atom);
-store.reportStats();
+// const store = new StatsStore(AppName.Atom);
+// store.reportStats();

@@ -2,7 +2,7 @@
   "name": "telemetry-github",
   "version": "0.0.0",
   "description": "telemetry for GitHub client apps",
-  "main": "index.js",
+  "main": "./out/index.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha --require mock-local-storage --compilers ts:ts-node/register ./test/*.spec.ts"
   },
