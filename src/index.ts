@@ -1,5 +1,6 @@
 const electron = require('electron');
 const rp = require("request-promise");
+import { LocalStorageWorker } from "./storage-helper";
 
 import { remote } from "electron";
 
@@ -8,7 +9,8 @@ import { remote } from "electron";
 const app = electron.app;
 const browserWindow = electron.remote;
 
-const storage = browserWindow.process.localStorage || localStorage;
+// const storage = localStorage || new LocalStorageWorker();
+const storage = localStorage;
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -78,11 +80,13 @@ export class StatsStore {
     console.log(this.optOut); // stupid unused variables linter
     await this.post(stats).then((response) => {
       console.log("RESPONSE", response);
-      if (!response.ok) {
+      if (response.ok) {
         console.log("Stats successfully logged");
       }
     }).catch((error) => {
+      console.log("Stats logging failed");
       console.log(error);
+      throw new Error('omg');
     });
   }
 
