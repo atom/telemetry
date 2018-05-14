@@ -1,12 +1,4 @@
-const electron = require('electron');
 const rp = require("request-promise");
-
-import { remote } from "electron";
-
-// is there a way to say "start an app if an app process doesn't exist (ie during testing)"
-// but use existing electron process if one does exist?  Ugh, IDK.
-const app = electron.app;
-const browserWindow = electron.remote;
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
