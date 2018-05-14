@@ -1,6 +1,5 @@
 const electron = require('electron');
 const rp = require("request-promise");
-import { LocalStorageWorker } from "./storage-helper";
 
 import { remote } from "electron";
 
@@ -8,9 +7,6 @@ import { remote } from "electron";
 // but use existing electron process if one does exist?  Ugh, IDK.
 const app = electron.app;
 const browserWindow = electron.remote;
-
-// const storage = localStorage || new LocalStorageWorker();
-const storage = localStorage;
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -58,14 +54,14 @@ export class StatsStore {
 
   public constructor(appName: AppName) {
     this.appUrl = baseUsageApi + appName;
-    const optOutValue = storage.getItem(StatsOptOutKey);
+    const optOutValue = localStorage.getItem(StatsOptOutKey);
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
-      if (!storage.getItem(HasSentOptInPingKey)) {
+      if (!localStorage.getItem(HasSentOptInPingKey)) {
         // this.sendOptInStatusPing(!this.optOut);
       }
     } else {
@@ -120,6 +116,3 @@ export class StatsStore {
     return await rp(options);
   }
 }
-
-// const store = new StatsStore(AppName.Atom);
-// store.reportStats();

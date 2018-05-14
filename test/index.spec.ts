@@ -12,7 +12,7 @@ describe("StatsStore", () => {
     describe("ReportStats", () => {
         const fakeEvent = { foo: 'bazz' };
 
-        it("Handle success case", async function() {
+        it("Handle success case", async () => {
             const stub = sinon.stub(store, 'post').resolves('ok');
             await store.reportStats();
             sinon.assert.calledWith(stub, fakeEvent);
