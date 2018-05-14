@@ -1,6 +1,5 @@
 import { expect, assert } from "chai";
 import { AppName, StatsStore } from "../src/index";
-import { LocalStorageWorker } from "../src/storage-helper";
 import * as sinon from 'sinon';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
