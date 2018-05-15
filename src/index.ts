@@ -1,4 +1,4 @@
-require('isomorphic-fetch');
+require("isomorphic-fetch");
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -35,8 +35,8 @@ interface ICalculatedStats {
  * other editors in the future.
  */
 export enum AppName {
-  Atom = 'atom',
-};
+  Atom = "atom",
+}
 
 export class StatsStore {
 
@@ -74,19 +74,21 @@ export class StatsStore {
       const response = await this.post(stats);
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
-      }
-      else {
-        console.log('stats successfully reported');
+      } else {
+        console.log("stats successfully reported");
       }
     } catch (err) {
+      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
+      // so we have some kind of visibility into how often things are failing.
       console.log(err);
     }
   }
 
   // public for testing purposes only
-  // is there a way of making things "package private" in typescript
+  // todo(tt, 5/2018): is there a way of making things "package private" in typescript?
+  // or an annotation that communicates "public for testing only"?
   public async getDailyStats(): Promise<ICalculatedStats> {
-    return { 
+    return {
       version: this.version,
       platform: process.platform,
       guid: "1234",
@@ -94,6 +96,17 @@ export class StatsStore {
       eventType: "usage",
     };
   }
+
+  /** Post some data to our stats endpoint. This is public for testing purposes only. */
+  public async post(body: object): Promise<Response> {
+    const options: object = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+  };
+
+    return fetch(this.appUrl, options);
+}
 
   /** Should the app report its daily stats? */
   private shouldReportDailyStats(): boolean {
@@ -109,18 +122,5 @@ export class StatsStore {
 
     const now = Date.now();
     return now - lastDate > DailyStatsReportInterval;
-  }
-
-  /** Post some data to our stats endpoint. 
-   * This is public for testing purposes only.
-  */
-  public async post(body: object): Promise<Response> {
-    const options: object = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    };
-
-    return fetch(this.appUrl, options);
   }
 }
