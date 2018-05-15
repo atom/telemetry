@@ -1,5 +1,3 @@
-// const rp = require("request-promise");
-// import fetch from 'node-fetch';
 require('isomorphic-fetch');
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
@@ -70,7 +68,6 @@ export class StatsStore {
   }
 
   public async reportStats() {
-    // todo: obviously replace this with a real stats event.
     const stats = await this.getDailyStats();
 
     try {
