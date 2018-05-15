@@ -1,8 +1,8 @@
-const rp = require("request-promise");
+require("isomorphic-fetch");
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
-const baseUsageApi = "http://localhost:4000/api/usage/atom";
+const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
 
@@ -19,45 +19,41 @@ interface ICalculatedStats {
   /** The app version. */
   readonly version: string;
 
-  readonly chromeUserAgent: string;
+  /** the platform */
+  readonly platform: string;
 
   /** The install ID. */
   readonly guid: string;
 
   /** GitHub api access token, if the user is authenticated */
-  readonly accessToken: string;
+  readonly accessToken: string | null;
 
   readonly eventType: "usage";
 }
 
-// this might need to be a string instead of an enum since this interface 
-// needs to be accessible outside of TypeScript and I'm not sure how enums
-// work in that regard.
-enum AppName {
-  Atom = 'Atom',
-};
+/** The goal is for this package to be app-agnostic so we can add
+ * other editors in the future.
+ */
+export enum AppName {
+  Atom = "atom",
+}
 
 export class StatsStore {
 
   /** Has the user opted out of stats reporting? */
   private optOut: boolean;
 
-  /** Name of the app we're reporting stats for. */
-  private appName: AppName;
+  /** api for calling central with our stats */
+  private appUrl: string;
 
-  private appUrl: String;
+  /** which version are we running, dawg */
+  private version: string;
 
-  public constructor(appName: AppName) {
-    this.appName = appName;
+  public constructor(appName: AppName, version: string) {
+    this.version = version;
     this.appUrl = baseUsageApi + appName;
-    let optOutValue;
-    try {
-      // local storage may not exist if we are running this somewhere without localStorage
-      // (such as in test mode)
-      optOutValue = localStorage.getItem(StatsOptOutKey);
-    } catch (exception) {
-      optOutValue = null;
-    }
+    const optOutValue = localStorage.getItem(StatsOptOutKey);
+
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
@@ -72,16 +68,45 @@ export class StatsStore {
   }
 
   public async reportStats() {
-    const stats = {foo: "bazz"};
-    await this.post(stats).then((response) => {
-      console.log("RESPONSE", response);
-      if (!response.ok) {
-        console.log("zomg");
+    const stats = await this.getDailyStats();
+
+    try {
+      const response = await this.post(stats);
+      if (response.status !== 200) {
+        throw new Error(`Stats reporting failure: ${response.status})`);
+      } else {
+        console.log("stats successfully reported");
       }
-    }).catch((error) => {
-      console.log(error);
-    });
+    } catch (err) {
+      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
+      // so we have some kind of visibility into how often things are failing.
+      console.log(err);
+    }
   }
+
+  // public for testing purposes only
+  // todo(tt, 5/2018): is there a way of making things "package private" in typescript?
+  // or an annotation that communicates "public for testing only"?
+  public async getDailyStats(): Promise<ICalculatedStats> {
+    return {
+      version: this.version,
+      platform: process.platform,
+      guid: "1234",
+      accessToken: null,
+      eventType: "usage",
+    };
+  }
+
+  /** Post some data to our stats endpoint. This is public for testing purposes only. */
+  public async post(body: object): Promise<Response> {
+    const options: object = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+  };
+
+    return fetch(this.appUrl, options);
+}
 
   /** Should the app report its daily stats? */
   private shouldReportDailyStats(): boolean {
@@ -98,19 +123,4 @@ export class StatsStore {
     const now = Date.now();
     return now - lastDate > DailyStatsReportInterval;
   }
-
-  /** Post some data to our stats endpoint. */
-  private async post(body: object): Promise<Response> {
-    const options = {
-      url: baseUsageApi,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    };
-
-    return await rp(options);
-  }
 }
-
-const store = new StatsStore(AppName.Atom);
-store.reportStats();
