@@ -1,4 +1,6 @@
-const rp = require("request-promise");
+// const rp = require("request-promise");
+// import fetch from 'node-fetch';
+require('isomorphic-fetch');
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -19,13 +21,14 @@ interface ICalculatedStats {
   /** The app version. */
   readonly version: string;
 
-  readonly chromeUserAgent: string;
+  /** the platform */
+  readonly platform: string;
 
   /** The install ID. */
   readonly guid: string;
 
   /** GitHub api access token, if the user is authenticated */
-  readonly accessToken: string;
+  readonly accessToken: string | null;
 
   readonly eventType: "usage";
 }
@@ -42,9 +45,14 @@ export class StatsStore {
   /** Has the user opted out of stats reporting? */
   private optOut: boolean;
 
-  private appUrl: String;
+  /** api for calling central with our stats */
+  private appUrl: string;
 
-  public constructor(appName: AppName) {
+  /** which version are we running, dawg */
+  private version: string;
+
+  public constructor(appName: AppName, version: string) {
+    this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
 
@@ -63,12 +71,12 @@ export class StatsStore {
 
   public async reportStats() {
     // todo: obviously replace this with a real stats event.
-    const stats = {foo: "bazz"};
+    const stats = await this.getDailyStats();
 
     try {
       const response = await this.post(stats);
-      if (!response.ok) {
-        throw new Error(`Unexpected status: ${response.statusText} (${response.status})`);
+      if (response.status !== 200) {
+        throw new Error(`Stats reporting failure: ${response.status})`);
       }
       else {
         console.log('stats successfully reported');
@@ -76,6 +84,18 @@ export class StatsStore {
     } catch (err) {
       console.log(err);
     }
+  }
+
+  // public for testing purposes only
+  // is there a way of making things "package private" in typescript
+  public async getDailyStats(): Promise<ICalculatedStats> {
+    return { 
+      version: this.version,
+      platform: process.platform,
+      guid: "1234",
+      accessToken: null,
+      eventType: "usage",
+    };
   }
 
   /** Should the app report its daily stats? */
@@ -98,13 +118,12 @@ export class StatsStore {
    * This is public for testing purposes only.
   */
   public async post(body: object): Promise<Response> {
-    const options = {
-      url: this.appUrl,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const options: object = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     };
 
-    return await rp(options);
+    return fetch(this.appUrl, options);
   }
 }
