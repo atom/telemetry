@@ -7,18 +7,18 @@ import { getGUID } from "../src/uuid";
 
 chai.use(chaiAsPromised);
 
-describe("StatsStore", () => {
+describe("StatsStore", function() {
     const version = "1.2.3";
     const store = new StatsStore(AppName.Atom, version);
     describe("ReportStats", async () => {
         const fakeEvent = await store.getDailyStats();
-        it("handles success case", async () => {
+        it("handles success case", async function() {
             const stub = sinon.stub(store, "post").resolves({status: 200});
             await store.reportStats();
             sinon.assert.calledWith(stub, fakeEvent);
             stub.restore();
         });
-        it("bandles failure case", async () => {
+        it("handles failure case", async function() {
             const stub = sinon.stub(store, "post").resolves({status: 500});
             await store.reportStats();
             sinon.assert.calledWith(stub, fakeEvent);
@@ -26,7 +26,7 @@ describe("StatsStore", () => {
         });
     });
     describe("GetDailyStats", () => {
-        it("event has all the fields we expect", async () => {
+        it("event has all the fields we expect", async function() {
             const event = await store.getDailyStats();
             expect(event.accessToken).to.be.null;
             expect(event.version).to.eq(version);
