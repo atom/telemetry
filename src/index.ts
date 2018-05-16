@@ -17,7 +17,7 @@ const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 /** How often daily stats should be submitted (i.e., 24 hours). */
 const DailyStatsReportInterval = 1000 * 60 * 60 * 24;
 
-interface ICalculatedStats {
+interface IDimensions {
   /** The app version. */
   readonly version: string;
 
@@ -27,10 +27,22 @@ interface ICalculatedStats {
   /** The install ID. */
   readonly guid: string;
 
+  /** The date the metrics were sent, in ISO-8601 format */
+  readonly date: string;
+
   /** GitHub api access token, if the user is authenticated */
   readonly accessToken: string | null;
 
   readonly eventType: "usage";
+
+  // todo: get language?
+}
+
+interface IMetrics {
+  dimensions: IDimensions;
+  // metrics names are defined by the client and thus aren't knowable
+  // at compile time here.
+  measures: object;
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -39,6 +51,8 @@ interface ICalculatedStats {
 export enum AppName {
   Atom = "atom",
 }
+
+const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
 
@@ -69,8 +83,8 @@ export class StatsStore {
     }
   }
 
-  public async reportStats() {
-    const stats = await this.getDailyStats();
+  public async reportStats(getDate: () => string) {
+    const stats = await this.getDailyStats(getDate);
 
     try {
       const response = await this.post(stats);
@@ -89,14 +103,23 @@ export class StatsStore {
   // public for testing purposes only
   // todo(tt, 5/2018): is there a way of making things "package private" in typescript?
   // or an annotation that communicates "public for testing only"?
-  public async getDailyStats(): Promise<ICalculatedStats> {
+  public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
+      measures: await this.getMeasures(),
+      dimensions: {
       version: this.version,
       platform: process.platform,
       guid: getGUID(),
       accessToken: null,
       eventType: "usage",
+      date: getDate(),
+      },
     };
+  }
+
+  public async getMeasures() {
+    // todo: obviously real measures here.
+    return { foo: 1, bar: 1};
   }
 
   /** Post some data to our stats endpoint. This is public for testing purposes only. */
@@ -108,7 +131,7 @@ export class StatsStore {
   };
 
     return fetch(this.appUrl, options);
-}
+  }
 
   /** Should the app report its daily stats? */
   private shouldReportDailyStats(): boolean {

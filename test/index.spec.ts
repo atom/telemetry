@@ -7,32 +7,37 @@ import { getGUID } from "../src/uuid";
 
 chai.use(chaiAsPromised);
 
+const getDate = () => {
+    return "2018-05-16T21:54:24.500Z";
+};
+
 describe("StatsStore", function() {
     const version = "1.2.3";
     const store = new StatsStore(AppName.Atom, version);
     describe("ReportStats", async () => {
-        const fakeEvent = await store.getDailyStats();
+        const fakeEvent = await store.getDailyStats(getDate);
         it("handles success case", async function() {
             const stub = sinon.stub(store, "post").resolves({status: 200});
-            await store.reportStats();
+            await store.reportStats(getDate);
             sinon.assert.calledWith(stub, fakeEvent);
             stub.restore();
         });
         it("handles failure case", async function() {
             const stub = sinon.stub(store, "post").resolves({status: 500});
-            await store.reportStats();
+            await store.reportStats(getDate);
             sinon.assert.calledWith(stub, fakeEvent);
             stub.restore();
         });
     });
     describe("GetDailyStats", () => {
         it("event has all the fields we expect", async function() {
-            const event = await store.getDailyStats();
-            expect(event.accessToken).to.be.null;
-            expect(event.version).to.eq(version);
-            expect(event.platform).to.eq(process.platform);
-            expect(event.eventType).to.eq("usage");
-            expect(event.guid).to.eq(getGUID());
+            const event = await store.getDailyStats(getDate);
+            const dimensions = event.dimensions;
+            expect(dimensions.accessToken).to.be.null;
+            expect(dimensions.version).to.eq(version);
+            expect(dimensions.platform).to.eq(process.platform);
+            expect(dimensions.eventType).to.eq("usage");
+            expect(dimensions.guid).to.eq(getGUID());
         });
     });
 });
