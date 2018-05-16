@@ -1,5 +1,7 @@
 require("isomorphic-fetch");
 
+import { getGUID } from "./uuid";
+
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
 const baseUsageApi = "http://localhost:4000/api/usage/";
@@ -91,7 +93,7 @@ export class StatsStore {
     return {
       version: this.version,
       platform: process.platform,
-      guid: "1234",
+      guid: getGUID(),
       accessToken: null,
       eventType: "usage",
     };

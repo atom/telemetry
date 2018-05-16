@@ -3,6 +3,7 @@ import { AppName, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { getGUID } from "../src/uuid";
 
 chai.use(chaiAsPromised);
 
@@ -11,13 +12,13 @@ describe("StatsStore", () => {
     const store = new StatsStore(AppName.Atom, version);
     describe("ReportStats", async () => {
         const fakeEvent = await store.getDailyStats();
-        it("Handle success case", async () => {
+        it("handles success case", async () => {
             const stub = sinon.stub(store, "post").resolves({status: 200});
             await store.reportStats();
             sinon.assert.calledWith(stub, fakeEvent);
             stub.restore();
         });
-        it("Handle failure case", async () => {
+        it("bandles failure case", async () => {
             const stub = sinon.stub(store, "post").resolves({status: 500});
             await store.reportStats();
             sinon.assert.calledWith(stub, fakeEvent);
@@ -31,7 +32,7 @@ describe("StatsStore", () => {
             expect(event.version).to.eq(version);
             expect(event.platform).to.eq(process.platform);
             expect(event.eventType).to.eq("usage");
-            expect(event.guid).to.be.ok;
+            expect(event.guid).to.eq(getGUID());
         });
     });
 });
