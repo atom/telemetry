@@ -153,8 +153,11 @@ export class StatsStore {
     return measure;
   }
 
+  /** Clears all measures that exist in the store.
+   * returns nothing.
+   */
   public async clearMeasures() {
-    // todo(tt, 5/2018): implement me!
+    await measuresDb.findAndRemove();
   }
 
   /** Get all measures.

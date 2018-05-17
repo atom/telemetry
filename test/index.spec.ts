@@ -29,37 +29,67 @@ describe("StatsStore", function() {
             stub.restore();
         });
     });
-    describe("incrementMeasure", async function() {
-        it("adds a new measure if it does not exist", async function() {
-            const measureName = "commits";
-            const measure = await store.getMeasure(measureName);
-            assert.deepEqual(measure, {});
-            await store.incrementMeasure(measureName);
-            const incrementedMeasure = await store.getMeasures();
-            assert.deepEqual(incrementedMeasure, {[measureName]: 1});
+    describe("measuresDb", async function() {
+        const measureName = "commits";
+        beforeEach(async function() {
+            await store.clearMeasures();
         });
-        it("increments an existing measure", async function() {
-            const measureName = "coAuthoredCommits";
-            await store.incrementMeasure(measureName);
-            const measure = await store.getMeasure(measureName);
-            assert.deepEqual(measure, {[measureName]: 1});
-            await store.incrementMeasure(measureName);
-            const incrementedMeasure = await store.getMeasure(measureName);
-            const foo = await store.getMeasure(measureName);
-            assert.deepEqual(incrementedMeasure, { [measureName]: 2});
+        describe("incrementMeasure", async function() {
+            it("adds a new measure if it does not exist", async function() {
+                const measure = await store.getMeasure(measureName);
+                assert.deepEqual(measure, {});
+                await store.incrementMeasure(measureName);
+                const incrementedMeasure = await store.getMeasures();
+                assert.deepEqual(incrementedMeasure, {[measureName]: 1});
+            });
+            it("increments an existing measure", async function() {
+                await store.incrementMeasure(measureName);
+                const measure = await store.getMeasure(measureName);
+                assert.deepEqual(measure, {[measureName]: 1});
+                await store.incrementMeasure(measureName);
+                const incrementedMeasure = await store.getMeasure(measureName);
+                const foo = await store.getMeasure(measureName);
+                assert.deepEqual(incrementedMeasure, { [measureName]: 2});
+            });
         });
-    });
-    describe("getMeasure", async function() {
-        it("gets an empty object if measure does not exist", async function() {
-            const measureName = "newMeasure";
-            const measure = await store.getMeasure(measureName);
-            assert.deepEqual(measure, {});
+        describe("getMeasure", async function() {
+            it("gets an empty object if measure does not exist", async function() {
+                const measure = await store.getMeasure("foo");
+                assert.deepEqual(measure, {});
+            });
+            it("gets a measure if it exists", async function() {
+                await store.incrementMeasure(measureName);
+                const measure = await store.getMeasure(measureName);
+                assert.deepEqual(measure, { [measureName]: 1 });
+            });
         });
-        it("gets a measure if it exists", async function() {
-            const measureName = "openGitPane";
-            await store.incrementMeasure(measureName);
-            const measure = await store.getMeasure(measureName);
-            assert.deepEqual(measure, { [measureName]: 1 });
+        describe("getMeasures", async function() {
+            it("gets all measures that exist", async function() {
+                await store.incrementMeasure(measureName);
+                await store.incrementMeasure("foo");
+                const measures = await store.getMeasures();
+                assert.deepEqual(measures, { [measureName]: 1, foo: 1});
+            });
+        });
+        describe("clearMeasures", async function() {
+            it("clears db containing single measure", async function() {
+                await store.incrementMeasure(measureName);
+                await store.clearMeasures();
+                const measures = await store.getMeasures();
+                assert.deepEqual(measures, {});
+            });
+            it("clears db containing multiple measures", async function() {
+                await store.incrementMeasure(measureName);
+                await store.incrementMeasure(measureName);
+                await store.clearMeasures();
+                const measures = await store.getMeasures();
+                assert.deepEqual(measures, {});
+            });
+            it("clearing an empty db does not throw an error", async function() {
+                const measures = await store.getMeasures();
+                assert.deepEqual(measures, {});
+                await store.clearMeasures();
+            });
         });
     });
     describe("getDailyStats", function() {
