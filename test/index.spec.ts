@@ -35,19 +35,31 @@ describe("StatsStore", function() {
             const measure = await store.getMeasure(measureName);
             assert.deepEqual(measure, {});
             await store.incrementMeasure(measureName);
-            const allMeasures = await store.getMeasures();
-            // how do I use the name of a symbol here
-            assert.deepEqual(allMeasures, {commits: 1});
+            const incrementedMeasure = await store.getMeasures();
+            assert.deepEqual(incrementedMeasure, {[measureName]: 1});
         });
         it("increments an existing measure", async function() {
             const measureName = "coAuthoredCommits";
             await store.incrementMeasure(measureName);
             const measure = await store.getMeasure(measureName);
-            assert.deepEqual(measure, {coAuthoredCommits: 1});
+            assert.deepEqual(measure, {[measureName]: 1});
             await store.incrementMeasure(measureName);
             const incrementedMeasure = await store.getMeasure(measureName);
-            const foo = await store.getMeasures();
-            assert.deepEqual(incrementedMeasure, { coAuthoredCommits: 2});
+            const foo = await store.getMeasure(measureName);
+            assert.deepEqual(incrementedMeasure, { [measureName]: 2});
+        });
+    });
+    describe("getMeasure", async function() {
+        it("gets an empty object if measure does not exist", async function() {
+            const measureName = "newMeasure";
+            const measure = await store.getMeasure(measureName);
+            assert.deepEqual(measure, {});
+        });
+        it("gets a measure if it exists", async function() {
+            const measureName = "openGitPane";
+            await store.incrementMeasure(measureName);
+            const measure = await store.getMeasure(measureName);
+            assert.deepEqual(measure, { [measureName]: 1 });
         });
     });
     describe("getDailyStats", function() {
