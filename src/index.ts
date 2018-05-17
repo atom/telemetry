@@ -1,6 +1,7 @@
 require("isomorphic-fetch");
 
 import { getGUID } from "./uuid";
+import measuresDb from "./database";
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
@@ -13,6 +14,11 @@ const StatsOptOutKey = "stats-opt-out";
 
 /** Have we successfully sent the stats opt-in? */
 const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
+
+/** The localStorage key where feature usage data is tracked.
+ * TODO (tt, 5/2018): figure out when to use Dexie vs when to use localStorage.
+ */
+const StatsMeasuresKey = "stats-measures";
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
 const DailyStatsReportInterval = 1000 * 60 * 60 * 24;
@@ -35,7 +41,7 @@ interface IDimensions {
 
   readonly eventType: "usage";
 
-  // todo: get language?
+  readonly language: string | null;
 }
 
 interface IMetrics {
@@ -52,6 +58,9 @@ export enum AppName {
   Atom = "atom",
 }
 
+/** helper for getting the date, which we pass in so that we can mock
+ * in unit tests.
+ */
 const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
@@ -113,13 +122,51 @@ export class StatsStore {
       accessToken: null,
       eventType: "usage",
       date: getDate(),
+      language: null,
       },
     };
   }
 
+  public async incrementMeasure(measureName: string) {
+    const existing = measuresDb.find({name: measureName});
+    if (!existing) {
+      // create that shit if it does not exist
+      measuresDb.insert({ name: measureName, count: 1});
+    } else {
+      const updatedCount = existing[0].count + 1;
+      measuresDb.update({ name: measureName, count: updatedCount});
+    }
+  }
+
+  public async getMeasure(measureName: string) {
+    const measure: { [name: string]: [number] } = {};
+    const existing = measuresDb.find({ name: measureName });
+    if (!existing) {
+      return measure;
+    } else if (existing.length > 1) {
+      // we should never get into this situation because the lokijs api
+      // overwrites existing items if a new item with the same name is inserted.
+      // but I've seen things (in prod) you people wouldn't believe.
+      // Attack ships on fire off the shoulder of Orion.
+      // Cosmic rays flipping bits and influencing the outcome of elections.
+      // So throw an error just in case and move on with our lives.
+      throw new Error("multiple measures with the same name");
+    } else {
+      measure[existing[0].name] = existing[0].count;
+    }
+    return measure;
+  }
+
+  public async clearMeasures() {
+    // implement me!
+  }
+
   public async getMeasures() {
-    // todo: obviously real measures here.
-    return { foo: 1, bar: 1};
+    const measures: { [name: string]: [number] } = {};
+    measuresDb.find().forEach((measure) => {
+      measures[measure.name] = measure.count;
+    });
+    return measures;
   }
 
   /** Post some data to our stats endpoint. This is public for testing purposes only. */

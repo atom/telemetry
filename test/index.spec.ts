@@ -14,7 +14,7 @@ const getDate = () => {
 describe("StatsStore", function() {
     const version = "1.2.3";
     const store = new StatsStore(AppName.Atom, version);
-    describe("ReportStats", async () => {
+    describe("reportStats", async function() {
         const fakeEvent = await store.getDailyStats(getDate);
         it("handles success case", async function() {
             const stub = sinon.stub(store, "post").resolves({status: 200});
@@ -29,13 +29,20 @@ describe("StatsStore", function() {
             stub.restore();
         });
     });
-    describe("GetDailyStats", () => {
+    describe("incrementMeasure", function() {
+        it("adds a new measure if it does not exist", function() {
+            const measureName = "commits";
+            store.incrementMeasure(measureName);
+        });
+    });
+    describe("getDailyStats", function() {
         it("event has all the fields we expect", async function() {
             const event = await store.getDailyStats(getDate);
             const dimensions = event.dimensions;
             expect(dimensions.accessToken).to.be.null;
             expect(dimensions.version).to.eq(version);
             expect(dimensions.platform).to.eq(process.platform);
+            expect(dimensions.date).to.eq(getDate());
             expect(dimensions.eventType).to.eq("usage");
             expect(dimensions.guid).to.eq(getGUID());
         });
