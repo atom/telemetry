@@ -128,48 +128,53 @@ export class StatsStore {
   }
 
   public async incrementMeasure(measureName: string) {
-    const existing = measuresDb.find({name: measureName});
-    if (!existing) {
-      // create that shit if it does not exist
-      measuresDb.insert({ name: measureName, count: 1});
+    const existing = await this.getUnformattedMeasure(measureName);
+    if (existing) {
+      existing.count += 1;
+      measuresDb.update(existing);
     } else {
-      const updatedCount = existing[0].count + 1;
-      measuresDb.update({ name: measureName, count: updatedCount});
+      measuresDb.insert({ name: measureName, count: 1});
     }
   }
 
-  public async getMeasure(measureName: string) {
-    const measure: { [name: string]: [number] } = {};
-    const existing = measuresDb.find({ name: measureName });
-    if (!existing) {
-      return measure;
-    } else if (existing.length > 1) {
-      // we should never get into this situation because the lokijs api
-      // overwrites existing items if a new item with the same name is inserted.
-      // but I've seen things (in prod) you people wouldn't believe.
-      // Attack ships on fire off the shoulder of Orion.
-      // Cosmic rays flipping bits and influencing the outcome of elections.
-      // So throw an error just in case and move on with our lives.
-      throw new Error("multiple measures with the same name");
-    } else {
-      measure[existing[0].name] = existing[0].count;
+  /** Get a single measure.
+   * This method strips the lokijs metadata, which external
+   * callers shouldn't care about.
+   * Takes a string, which is the measure name.
+   * Returns something like { commits: 7 }.
+   */
+  public async getMeasure(measureName: string):
+  Promise<{[name: string]: number}> {
+    const measure: { [name: string]: number } = {};
+    const existing = await this.getUnformattedMeasure(measureName);
+    if (existing) {
+      measure[existing.name] = existing.count;
     }
     return measure;
   }
 
   public async clearMeasures() {
-    // implement me!
+    // todo(tt, 5/2018): implement me!
   }
 
-  public async getMeasures() {
-    const measures: { [name: string]: [number] } = {};
+  /** Get all measures.
+   * This method strips the lokijs metadata, which external
+   * callers shouldn't care about.
+   * Takes a string, which is the measure name.
+   * Returns something like { commits: 7, coAuthoredCommits: 8 }.
+   */
+  public async getMeasures():
+    Promise<{[name: string]: number}> {
+    const measures: { [name: string]: number } = {};
     measuresDb.find().forEach((measure) => {
       measures[measure.name] = measure.count;
     });
     return measures;
   }
 
-  /** Post some data to our stats endpoint. This is public for testing purposes only. */
+  /** Post some data to our stats endpoint.
+   * This is public for testing purposes only.
+   */
   public async post(body: object): Promise<Response> {
     const options: object = {
       method: "POST",
@@ -178,6 +183,30 @@ export class StatsStore {
   };
 
     return fetch(this.appUrl, options);
+  }
+
+  /** Get a single measure.
+   * Don't strip lokijs metadata, because if we want to update existing
+   * items we need to pass that shizz back in.
+   * Returns something like:
+   * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
+   */
+  private async getUnformattedMeasure(measureName: string) {
+    const existing = await measuresDb.find({ name: measureName });
+
+    if (existing.length > 1) {
+      // we should never get into this situation because if we are using the lokijs
+      // api properly it should overwrite existing items with the same name.
+      // but I've seen things (in prod) you people wouldn't believe.
+      // Attack ships on fire off the shoulder of Orion.
+      // Cosmic rays flipping bits and influencing the outcome of elections.
+      // So throw an error just in case.
+      throw new Error("multiple measures with the same name");
+    } else if (existing.length < 1) {
+      return null;
+    } else {
+      return existing[0];
+    }
   }
 
   /** Should the app report its daily stats? */

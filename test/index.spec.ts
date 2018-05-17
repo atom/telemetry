@@ -29,10 +29,25 @@ describe("StatsStore", function() {
             stub.restore();
         });
     });
-    describe("incrementMeasure", function() {
-        it("adds a new measure if it does not exist", function() {
+    describe("incrementMeasure", async function() {
+        it("adds a new measure if it does not exist", async function() {
             const measureName = "commits";
-            store.incrementMeasure(measureName);
+            const measure = await store.getMeasure(measureName);
+            assert.deepEqual(measure, {});
+            await store.incrementMeasure(measureName);
+            const allMeasures = await store.getMeasures();
+            // how do I use the name of a symbol here
+            assert.deepEqual(allMeasures, {commits: 1});
+        });
+        it("increments an existing measure", async function() {
+            const measureName = "coAuthoredCommits";
+            await store.incrementMeasure(measureName);
+            const measure = await store.getMeasure(measureName);
+            assert.deepEqual(measure, {coAuthoredCommits: 1});
+            await store.incrementMeasure(measureName);
+            const incrementedMeasure = await store.getMeasure(measureName);
+            const foo = await store.getMeasures();
+            assert.deepEqual(incrementedMeasure, { coAuthoredCommits: 2});
         });
     });
     describe("getDailyStats", function() {
