@@ -17,9 +17,7 @@ const StatsOptOutKey = "stats-opt-out";
 /** Have we successfully sent the stats opt-in? */
 const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
-/** The localStorage key where feature usage data is tracked.
- * TODO (tt, 5/2018): figure out when to use Dexie vs when to use localStorage.
- */
+/** The localStorage key where feature usage data is tracked. */
 const StatsMeasuresKey = "stats-measures";
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
@@ -132,22 +130,6 @@ export class StatsStore {
   public async incrementMeasure(measureName: string) {
     await measuresDb.incrementMeasure(measureName);
   }
-
-  /** Get a single measure.
-   * This method strips the lokijs metadata, which external
-   * callers shouldn't care about.
-   * Takes a string, which is the measure name.
-   * Returns something like { commits: 7 }.
-   */
-  // public async getMeasure(measureName: string):
-  // Promise<{[name: string]: number}> {
-  //   const measure: { [name: string]: number } = {};
-  //   const existing = await this.getUnformattedMeasure(measureName);
-  //   if (existing) {
-  //     measure[existing.name] = existing.count;
-  //   }
-  //   return measure;
-  // }
 
   /** Post some data to our stats endpoint.
    * This is public for testing purposes only.
