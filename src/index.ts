@@ -1,13 +1,15 @@
 require("isomorphic-fetch");
 
 import { getGUID } from "./uuid";
-import measuresDb from "./database";
+import MeasuresDatabase from "./database";
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
 
 const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
+
+const measuresDb = new MeasuresDatabase();
 
 /** The localStorage key for whether the user has opted out. */
 const StatsOptOutKey = "stats-opt-out";
@@ -114,7 +116,7 @@ export class StatsStore {
   // or an annotation that communicates "public for testing only"?
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
-      measures: await this.getMeasures(),
+      measures: await measuresDb.getMeasures(),
       dimensions: {
       version: this.version,
       platform: process.platform,
@@ -128,13 +130,7 @@ export class StatsStore {
   }
 
   public async incrementMeasure(measureName: string) {
-    const existing = await this.getUnformattedMeasure(measureName);
-    if (existing) {
-      existing.count += 1;
-      measuresDb.update(existing);
-    } else {
-      measuresDb.insert({ name: measureName, count: 1});
-    }
+    await measuresDb.incrementMeasure(measureName);
   }
 
   /** Get a single measure.
@@ -143,37 +139,15 @@ export class StatsStore {
    * Takes a string, which is the measure name.
    * Returns something like { commits: 7 }.
    */
-  public async getMeasure(measureName: string):
-  Promise<{[name: string]: number}> {
-    const measure: { [name: string]: number } = {};
-    const existing = await this.getUnformattedMeasure(measureName);
-    if (existing) {
-      measure[existing.name] = existing.count;
-    }
-    return measure;
-  }
-
-  /** Clears all measures that exist in the store.
-   * returns nothing.
-   */
-  public async clearMeasures() {
-    await measuresDb.findAndRemove();
-  }
-
-  /** Get all measures.
-   * This method strips the lokijs metadata, which external
-   * callers shouldn't care about.
-   * Takes a string, which is the measure name.
-   * Returns something like { commits: 7, coAuthoredCommits: 8 }.
-   */
-  public async getMeasures():
-    Promise<{[name: string]: number}> {
-    const measures: { [name: string]: number } = {};
-    measuresDb.find().forEach((measure) => {
-      measures[measure.name] = measure.count;
-    });
-    return measures;
-  }
+  // public async getMeasure(measureName: string):
+  // Promise<{[name: string]: number}> {
+  //   const measure: { [name: string]: number } = {};
+  //   const existing = await this.getUnformattedMeasure(measureName);
+  //   if (existing) {
+  //     measure[existing.name] = existing.count;
+  //   }
+  //   return measure;
+  // }
 
   /** Post some data to our stats endpoint.
    * This is public for testing purposes only.
@@ -186,30 +160,6 @@ export class StatsStore {
   };
 
     return fetch(this.appUrl, options);
-  }
-
-  /** Get a single measure.
-   * Don't strip lokijs metadata, because if we want to update existing
-   * items we need to pass that shizz back in.
-   * Returns something like:
-   * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
-   */
-  private async getUnformattedMeasure(measureName: string) {
-    const existing = await measuresDb.find({ name: measureName });
-
-    if (existing.length > 1) {
-      // we should never get into this situation because if we are using the lokijs
-      // api properly it should overwrite existing items with the same name.
-      // but I've seen things (in prod) you people wouldn't believe.
-      // Attack ships on fire off the shoulder of Orion.
-      // Cosmic rays flipping bits and influencing the outcome of elections.
-      // So throw an error just in case.
-      throw new Error("multiple measures with the same name");
-    } else if (existing.length < 1) {
-      return null;
-    } else {
-      return existing[0];
-    }
   }
 
   /** Should the app report its daily stats? */
