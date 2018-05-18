@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/atom/telemetry.svg?token=RwrCnzpsZN5oEq5S5p7V&branch=master)](https://travis-ci.com/atom/telemetry)
+
 Sends usage metrics to GitHub's internal analytics pipeline.
 
 This app can be used from any GitHub client application that speaks JavaScript and has access to localStorage.
