@@ -1,5 +1,5 @@
 import { expect, assert } from "chai";
-import { AppName, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, HasSentOptInPingKey, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -14,28 +14,31 @@ const getDate = () => {
 describe("StatsStore", function() {
     const version = "1.2.3";
     let store: StatsStore;
-    beforeEach(async function() {
+    let postStub: sinon.SinonStub;
+    beforeEach(function() {
         store = new StatsStore(AppName.Atom, version);
+        postStub = sinon.stub(store, "post");
+    });
+    afterEach(async function() {
+        localStorage.clear();
     });
     describe("reportStats", async function() {
         const fakeEvent = await store.getDailyStats(getDate);
         it("handles success case", async function() {
-            const postStub = sinon.stub(store, "post").resolves({status: 200});
+            postStub.resolves({ status: 200 });
             await store.reportStats(getDate);
             sinon.assert.calledWith(postStub, fakeEvent);
-            postStub.restore();
             // test that daily stats were cleared in success case
         });
         it("handles failure case", async function() {
-            const postStub = sinon.stub(store, "post").resolves({status: 500});
+            postStub.resolves({ status: 500 });
             await store.reportStats(getDate);
             sinon.assert.calledWith(postStub, fakeEvent);
-            postStub.restore();
             // test that daily stats were not cleared in the failure case
         });
         it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
             const pingEvent = { eventType: "ping", optIn: false };
-            const postStub = sinon.stub(store, "post").resolves({status: 200});
+            postStub.resolves({ status: 200 });
             store.setOptOut(true);
             await store.reportStats(getDate);
             await store.reportStats(getDate);
@@ -43,21 +46,46 @@ describe("StatsStore", function() {
 
             // event should only be sent the first time even though we call report stats
             sinon.assert.callCount(postStub, 1);
-
-            postStub.restore();
         });
     });
     describe("setOptOut", async function() {
         it("sets the opt out preferences in local storage", async function() {
-
-            store.setOptOut(true);
+            assert.notOk(localStorage.getItem(StatsOptOutKey));
+            await store.setOptOut(true);
+            assert.ok(localStorage.getItem(StatsOptOutKey));
         });
-        it("sends the status ping when status is changed", async function() {
-            // can mock sendOptInStatusPing
+        it("sends one status ping when status is changed", async function() {
+            const sendPingStub = sinon.stub(store, "sendOptInStatusPing").resolves(true);
+            await store.setOptOut(true);
+            sinon.assert.calledWith(sendPingStub, false);
+
+            sendPingStub.reset();
+            await store.setOptOut(true);
+            sinon.assert.notCalled(sendPingStub);
+
+            await store.setOptOut(false);
+            sinon.assert.calledWith(sendPingStub, true);
         });
     });
     describe("sendOptInStatusPing", async function() {
-        console.log("foo");
+        it("handles success", async function() {
+            const pingEvent = { eventType: "ping", optIn: false };
+            postStub.resolves({status: 200});
+            await store.sendOptInStatusPing(false);
+
+            sinon.assert.calledWith(postStub, pingEvent);
+
+            assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), "1");
+        });
+        it("handles error", async function() {
+            const pingEvent = { eventType: "ping", optIn: false };
+            postStub.resolves({ status: 500 });
+            await store.sendOptInStatusPing(false);
+
+            sinon.assert.calledWith(postStub, pingEvent);
+
+            assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), null);
+        });
     });
     describe("getDailyStats", async function() {
         it("event has all the fields we expect", async function() {

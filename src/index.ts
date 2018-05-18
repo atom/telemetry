@@ -100,7 +100,7 @@ export class StatsStore {
     this.optOut = optOut;
 
     localStorage.setItem(StatsOptOutKey, optOut ? "1" : "0");
-
+    console.log("CHANGED", changed);
     if (changed) {
       await this.sendOptInStatusPing(!optOut);
     }
