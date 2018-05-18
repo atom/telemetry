@@ -13,10 +13,10 @@ const LastDailyStatsReportKey = "last-daily-stats-report";
 const measuresDb = new MeasuresDatabase();
 
 /** The localStorage key for whether the user has opted out. */
-const StatsOptOutKey = "stats-opt-out";
+export const StatsOptOutKey = "stats-opt-out";
 
 /** Have we successfully sent the stats opt-in? */
-const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
+export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
 /** The localStorage key where feature usage data is tracked. */
 const StatsMeasuresKey = "stats-measures";
