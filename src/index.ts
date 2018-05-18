@@ -9,6 +9,7 @@ const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
 
+/** Class that wraps db where metrics are stored so they can persist across sessions. */
 const measuresDb = new MeasuresDatabase();
 
 /** The localStorage key for whether the user has opted out. */
@@ -85,14 +86,30 @@ export class StatsStore {
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
       if (!localStorage.getItem(HasSentOptInPingKey)) {
-        // this.sendOptInStatusPing(!this.optOut);
+        this.sendOptInStatusPing(!this.optOut);
       }
     } else {
       this.optOut = false;
     }
   }
 
+  /** Set whether the user has opted out of stats reporting. */
+  public async setOptOut(optOut: boolean): Promise<void> {
+    const changed = this.optOut !== optOut;
+
+    this.optOut = optOut;
+
+    localStorage.setItem(StatsOptOutKey, optOut ? "1" : "0");
+
+    if (changed) {
+      await this.sendOptInStatusPing(!optOut);
+    }
+  }
+
   public async reportStats(getDate: () => string) {
+    if (this.optOut) {
+      return;
+    }
     const stats = await this.getDailyStats(getDate);
 
     try {
@@ -100,12 +117,36 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
+        measuresDb.clearMeasures();
         console.log("stats successfully reported");
       }
     } catch (err) {
       // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
       // so we have some kind of visibility into how often things are failing.
       console.log(err);
+    }
+  }
+
+  /* send a ping to indicate that the user has changed their opt-in preferences.
+  * public for testing purposes only.
+  */
+  public async sendOptInStatusPing(optIn: boolean): Promise<void> {
+    const direction = optIn ? "in" : "out";
+    try {
+      const response = await this.post({
+        eventType: "ping",
+        optIn,
+      });
+      if (response.status !== 200) {
+        throw new Error(`Error sending opt in ping: ${response.status}`);
+      }
+      localStorage.setItem(HasSentOptInPingKey, "1");
+
+      console.log(`Opt ${direction} reported.`);
+    } catch (err) {
+      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
+      // so we have some kind of visibility into how often things are failing.
+      console.log(`Error reporting opt ${direction}`, err);
     }
   }
 

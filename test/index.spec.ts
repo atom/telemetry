@@ -28,6 +28,20 @@ describe("StatsStore", function() {
             sinon.assert.calledWith(postStub, fakeEvent);
             postStub.restore();
         });
+        it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
+            const pingEvent = { eventType: "ping", optIn: false };
+            const postStub = sinon.stub(store, "post").resolves({status: 200});
+            store.setOptOut(true);
+            await store.reportStats(getDate);
+            await store.reportStats(getDate);
+            sinon.assert.calledWith(postStub, pingEvent);
+
+            // event should only be sent the first time even though we call report stats
+            sinon.assert.callCount(postStub, 1);
+            // restore state of store to avoid the test leaking state, even though it doesn't matter right now
+            store.setOptOut(false);
+            postStub.restore();
+        });
     });
     describe("getDailyStats", function() {
         it("event has all the fields we expect", async function() {
