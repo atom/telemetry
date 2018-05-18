@@ -15,6 +15,8 @@ describe("StatsStore", function() {
     const version = "1.2.3";
     let store: StatsStore;
     let postStub: sinon.SinonStub;
+    const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
+
     beforeEach(function() {
         store = new StatsStore(AppName.Atom, version);
         postStub = sinon.stub(store, "post");
@@ -47,7 +49,6 @@ describe("StatsStore", function() {
             assert.deepEqual(measures, fakeEvent.measures);
         });
         it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
-            const pingEvent = { eventType: "ping", optIn: false };
             postStub.resolves({ status: 200 });
             store.setOptOut(true);
             await store.reportStats(getDate);
@@ -79,7 +80,6 @@ describe("StatsStore", function() {
     });
     describe("sendOptInStatusPing", async function() {
         it("handles success", async function() {
-            const pingEvent = { eventType: "ping", optIn: false };
             postStub.resolves({status: 200});
             await store.sendOptInStatusPing(false);
 
@@ -88,7 +88,6 @@ describe("StatsStore", function() {
             assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), "1");
         });
         it("handles error", async function() {
-            const pingEvent = { eventType: "ping", optIn: false };
             postStub.resolves({ status: 500 });
             await store.sendOptInStatusPing(false);
 

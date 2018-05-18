@@ -100,7 +100,7 @@ export class StatsStore {
     this.optOut = optOut;
 
     localStorage.setItem(StatsOptOutKey, optOut ? "1" : "0");
-    console.log("CHANGED", changed);
+
     if (changed) {
       await this.sendOptInStatusPing(!optOut);
     }
@@ -135,7 +135,9 @@ export class StatsStore {
     try {
       const response = await this.post({
         eventType: "ping",
-        optIn,
+        dimensions: {
+          optIn,
+        },
       });
       if (response.status !== 200) {
         throw new Error(`Error sending opt in ping: ${response.status}`);
@@ -157,13 +159,13 @@ export class StatsStore {
     return {
       measures: await measuresDb.getMeasures(),
       dimensions: {
-      version: this.version,
-      platform: process.platform,
-      guid: getGUID(),
-      accessToken: null,
-      eventType: "usage",
-      date: getDate(),
-      language: null,
+        version: this.version,
+        platform: process.platform,
+        guid: getGUID(),
+        accessToken: null,
+        eventType: "usage",
+        date: getDate(),
+        language: null,
       },
     };
   }
