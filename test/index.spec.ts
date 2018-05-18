@@ -38,14 +38,22 @@ describe("StatsStore", function() {
 
             // event should only be sent the first time even though we call report stats
             sinon.assert.callCount(postStub, 1);
-            // restore state of store to avoid the test leaking state, even though it doesn't matter right now
+
+            // restore state of store to avoid the test leaking state
             store.setOptOut(false);
             postStub.restore();
         });
     });
-    describe("getDailyStats", function() {
+    describe("getDailyStats", async function() {
         it("event has all the fields we expect", async function() {
+            const measure1 = "commits";
+            const measure2 = "openGitPane";
+            await store.incrementMeasure(measure1);
+            await store.incrementMeasure(measure2);
+            await store.incrementMeasure(measure2);
+
             const event = await store.getDailyStats(getDate);
+
             const dimensions = event.dimensions;
             expect(dimensions.accessToken).to.be.null;
             expect(dimensions.version).to.eq(version);
@@ -53,6 +61,10 @@ describe("StatsStore", function() {
             expect(dimensions.date).to.eq(getDate());
             expect(dimensions.eventType).to.eq("usage");
             expect(dimensions.guid).to.eq(getGUID());
+
+            const measures = event.measures;
+            expect(measures).to.deep.include({ [measure1]: 1});
+            expect(measures).to.deep.include({ [measure2]: 2});
         });
     });
 });
