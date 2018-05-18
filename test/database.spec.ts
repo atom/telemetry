@@ -21,7 +21,6 @@ describe("measuresDb", async function() {
           assert.deepEqual(measure, {[measureName]: 1});
           await measuresDb.incrementMeasure(measureName);
           const incrementedMeasure = await measuresDb.getMeasures();
-          const foo = await measuresDb.getMeasures();
           assert.deepEqual(incrementedMeasure, { [measureName]: 2});
       });
   });
@@ -52,6 +51,7 @@ describe("measuresDb", async function() {
       it("clears db containing multiple measures", async function() {
           await measuresDb.incrementMeasure(measureName);
           await measuresDb.incrementMeasure(measureName);
+          await measuresDb.incrementMeasure("foo");
           await measuresDb.clearMeasures();
           const measures = await measuresDb.getMeasures();
           assert.deepEqual(measures, {});

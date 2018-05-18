@@ -28,7 +28,6 @@ export default class MeasuresDatabase {
   /** Get all measures.
    * This method strips the lokijs metadata, which external
    * callers shouldn't care about.
-   * Takes a string, which is the measure name.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
   public async getMeasures():

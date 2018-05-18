@@ -17,16 +17,16 @@ describe("StatsStore", function() {
     describe("reportStats", async function() {
         const fakeEvent = await store.getDailyStats(getDate);
         it("handles success case", async function() {
-            const stub = sinon.stub(store, "post").resolves({status: 200});
+            const postStub = sinon.stub(store, "post").resolves({status: 200});
             await store.reportStats(getDate);
-            sinon.assert.calledWith(stub, fakeEvent);
-            stub.restore();
+            sinon.assert.calledWith(postStub, fakeEvent);
+            postStub.restore();
         });
         it("handles failure case", async function() {
-            const stub = sinon.stub(store, "post").resolves({status: 500});
+            const postStub = sinon.stub(store, "post").resolves({status: 500});
             await store.reportStats(getDate);
-            sinon.assert.calledWith(stub, fakeEvent);
-            stub.restore();
+            sinon.assert.calledWith(postStub, fakeEvent);
+            postStub.restore();
         });
     });
     describe("getDailyStats", function() {
