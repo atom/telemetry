@@ -1,5 +1,5 @@
 import { expect, assert } from "chai";
-import { AppName, HasSentOptInPingKey, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, HasSentOptInPingKey, IMetrics, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -23,18 +23,28 @@ describe("StatsStore", function() {
         localStorage.clear();
     });
     describe("reportStats", async function() {
-        const fakeEvent = await store.getDailyStats(getDate);
+        let fakeEvent: IMetrics;
+        beforeEach(async function() {
+            await store.incrementMeasure("commit");
+            fakeEvent = await store.getDailyStats(getDate);
+        });
         it("handles success case", async function() {
             postStub.resolves({ status: 200 });
             await store.reportStats(getDate);
             sinon.assert.calledWith(postStub, fakeEvent);
-            // test that daily stats were cleared in success case
+
+            // measures should be cleared in success case
+            const measures = (await store.getDailyStats(getDate)).measures;
+            assert.deepEqual(measures, {});
         });
         it("handles failure case", async function() {
             postStub.resolves({ status: 500 });
             await store.reportStats(getDate);
             sinon.assert.calledWith(postStub, fakeEvent);
-            // test that daily stats were not cleared in the failure case
+
+            // measures should not be cleared if we fail to send daily stats
+            const measures = (await store.getDailyStats(getDate)).measures;
+            assert.deepEqual(measures, fakeEvent.measures);
         });
         it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
             const pingEvent = { eventType: "ping", optIn: false };

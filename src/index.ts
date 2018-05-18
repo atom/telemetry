@@ -45,7 +45,7 @@ interface IDimensions {
   readonly language: string | null;
 }
 
-interface IMetrics {
+export interface IMetrics {
   dimensions: IDimensions;
   // metrics names are defined by the client and thus aren't knowable
   // at compile time here.
