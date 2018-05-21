@@ -75,10 +75,21 @@ export class StatsStore {
   /** which version are we running, dawg */
   private version: string;
 
-  public constructor(appName: AppName, version: string) {
+  /** is electron app running in development mode?
+   * There isn't currently a consistent way of programmatically determining if an app
+   * is in dev mode that works in Desktop, Atom, and vscode.
+   * Todo: use Electron's new api to determine whether we are in dev mode, once
+   * all the clients using `telemetry` are on. Electron versions that support this api.
+   * https://github.com/electron/electron/issues/7714
+   */
+  private isDevMode: boolean;
+
+  public constructor(appName: AppName, version: string, isDevMode: boolean) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
+
+    this.isDevMode = isDevMode;
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -107,7 +118,7 @@ export class StatsStore {
   }
 
   public async reportStats(getDate: () => string) {
-    if (this.optOut) {
+    if (this.optOut || this.isDevMode) {
       return;
     }
     const stats = await this.getDailyStats(getDate);

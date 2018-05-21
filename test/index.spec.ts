@@ -18,7 +18,7 @@ describe("StatsStore", function() {
   const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
 
   beforeEach(function() {
-    store = new StatsStore(AppName.Atom, version);
+    store = new StatsStore(AppName.Atom, version, false);
     postStub = sinon.stub(store, "post");
   });
   afterEach(async function() {
@@ -47,6 +47,12 @@ describe("StatsStore", function() {
       // measures should not be cleared if we fail to send daily stats
       const measures = (await store.getDailyStats(getDate)).measures;
       assert.deepEqual(measures, fakeEvent.measures);
+    });
+    it("does not report stats when app is in dev mode", async function() {
+      const storeInDevMode = new StatsStore(AppName.Atom, version, true);
+      postStub = sinon.stub(storeInDevMode, "post").resolves( { status: 200 });
+      await storeInDevMode.reportStats(getDate);
+      sinon.assert.notCalled(postStub);
     });
     it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
       postStub.resolves({ status: 200 });
