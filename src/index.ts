@@ -9,9 +9,6 @@ const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
 
-/** Class that wraps db where metrics are stored so they can persist across sessions. */
-const measuresDb = new MeasuresDatabase();
-
 /** The localStorage key for whether the user has opted out. */
 export const StatsOptOutKey = "stats-opt-out";
 
@@ -87,6 +84,9 @@ export class StatsStore {
    */
   private getAccessToken: () => string;
 
+  /** Class that wraps db where metrics are stored so they can persist across sessions. */
+  private measuresDb = new MeasuresDatabase();
+
   public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken: () => string) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
@@ -132,7 +132,7 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
-        measuresDb.clearMeasures();
+        this.measuresDb.clearMeasures();
         console.log("stats successfully reported");
       }
     } catch (err) {
@@ -172,7 +172,7 @@ export class StatsStore {
   // or an annotation that communicates "public for testing only"?
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
-      measures: await measuresDb.getMeasures(),
+      measures: await this.measuresDb.getMeasures(),
       dimensions: {
         version: this.version,
         platform: process.platform,
@@ -185,8 +185,15 @@ export class StatsStore {
   }
 
   public async incrementMeasure(measureName: string) {
-    // todo: don't increment in dev mode or if the user has opted out
-    await measuresDb.incrementMeasure(measureName);
+    // don't increment in dev mode (because localStorage)
+    // is shared across dev and non dev windows and there's
+    // no way to keep dev and non-dev metrics separate.
+    // don't increment if the user has opted out, because
+    // we want to respect user privacy.
+    if (this.isDevMode || this.optOut) {
+      return;
+    }
+    await this.measuresDb.incrementMeasure(measureName);
   }
 
   /** Post some data to our stats endpoint.

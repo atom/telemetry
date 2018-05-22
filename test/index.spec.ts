@@ -71,6 +71,26 @@ describe("StatsStore", function() {
       sinon.assert.callCount(postStub, 1);
     });
   });
+  describe("incrementMeasure", async function() {
+    const measureName = "commits";
+    it("does not increment metrics in dev mode", async function() {
+      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
+      await storeInDevMode.incrementMeasure(measureName);
+      const stats = await storeInDevMode.getDailyStats(getDate);
+      assert.deepEqual(stats.measures, {});
+    });
+    it("does not increment metrics if user has opted out", async function() {
+      store.setOptOut(true);
+      await store.incrementMeasure(measureName);
+      const stats = await store.getDailyStats(getDate);
+      assert.deepEqual(stats.measures, {});
+    });
+    it("does increment metrics if non dev and user has opted in", async function() {
+      await store.incrementMeasure(measureName);
+      const stats = await store.getDailyStats(getDate);
+      assert.deepEqual(stats.measures, {[measureName]: 1});
+    });
+  });
   describe("post", async function() {
     it("sends the auth header if one exists", async function() {
       store = new StatsStore(AppName.Atom, version, false, getAccessToken);
