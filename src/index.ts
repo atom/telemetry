@@ -9,9 +9,6 @@ const baseUsageApi = "http://localhost:4000/api/usage/";
 
 const LastDailyStatsReportKey = "last-daily-stats-report";
 
-/** Class that wraps db where metrics are stored so they can persist across sessions. */
-const measuresDb = new MeasuresDatabase();
-
 /** The localStorage key for whether the user has opted out. */
 export const StatsOptOutKey = "stats-opt-out";
 
@@ -36,9 +33,6 @@ interface IDimensions {
 
   /** The date the metrics were sent, in ISO-8601 format */
   readonly date: string;
-
-  /** GitHub api access token, if the user is authenticated */
-  readonly accessToken: string | null;
 
   readonly eventType: "usage";
 
@@ -75,10 +69,31 @@ export class StatsStore {
   /** which version are we running, dawg */
   private version: string;
 
-  public constructor(appName: AppName, version: string) {
+  /** is electron app running in development mode?
+   * There isn't currently a consistent way of programmatically determining if an app
+   * is in dev mode that works in Desktop, Atom, and vscode.
+   * Todo: use Electron's new api to determine whether we are in dev mode, once
+   * all the clients using `telemetry` are on. Electron versions that support this api.
+   * https://github.com/electron/electron/issues/7714
+   */
+  private isDevMode: boolean;
+
+  /** function for getting GitHub access token if one exists.
+   * We don't want to store the token, due to security concerns, and also
+   * because the token might expire.
+   */
+  private getAccessToken: () => string;
+
+  /** Class that wraps db where metrics are stored so they can persist across sessions. */
+  private measuresDb = new MeasuresDatabase();
+
+  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken: () => string) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
+
+    this.isDevMode = isDevMode;
+    this.getAccessToken = getAccessToken;
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -107,7 +122,7 @@ export class StatsStore {
   }
 
   public async reportStats(getDate: () => string) {
-    if (this.optOut) {
+    if (this.optOut || this.isDevMode) {
       return;
     }
     const stats = await this.getDailyStats(getDate);
@@ -117,7 +132,7 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
-        measuresDb.clearMeasures();
+        this.measuresDb.clearMeasures();
         console.log("stats successfully reported");
       }
     } catch (err) {
@@ -157,12 +172,11 @@ export class StatsStore {
   // or an annotation that communicates "public for testing only"?
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
-      measures: await measuresDb.getMeasures(),
+      measures: await this.measuresDb.getMeasures(),
       dimensions: {
         version: this.version,
         platform: process.platform,
         guid: getGUID(),
-        accessToken: null,
         eventType: "usage",
         date: getDate(),
         language: null,
@@ -171,20 +185,40 @@ export class StatsStore {
   }
 
   public async incrementMeasure(measureName: string) {
-    await measuresDb.incrementMeasure(measureName);
+    // don't increment in dev mode (because localStorage)
+    // is shared across dev and non dev windows and there's
+    // no way to keep dev and non-dev metrics separate.
+    // don't increment if the user has opted out, because
+    // we want to respect user privacy.
+    if (this.isDevMode || this.optOut) {
+      return;
+    }
+    await this.measuresDb.incrementMeasure(measureName);
   }
 
   /** Post some data to our stats endpoint.
    * This is public for testing purposes only.
    */
   public async post(body: object): Promise<Response> {
+    const requestHeaders: {[name: string]: string} = { "Content-Type": "application/json" };
+    const token = this.getAccessToken();
+    if (token) {
+      requestHeaders.Authorization = `token ${token}`;
+    }
     const options: object = {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: requestHeaders,
       body: JSON.stringify(body),
-  };
+    };
 
-    return fetch(this.appUrl, options);
+    return this.fetch(this.appUrl, options);
+  }
+
+  /** Exists to enable us to mock fetch in tests
+   * This is public for testing purposes only.
+   */
+  public async fetch(url: string, options: object): Promise<Response> {
+    return fetch(url, options);
   }
 
   /** Should the app report its daily stats? */
