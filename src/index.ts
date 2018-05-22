@@ -37,9 +37,6 @@ interface IDimensions {
   /** The date the metrics were sent, in ISO-8601 format */
   readonly date: string;
 
-  /** GitHub api access token, if the user is authenticated */
-  readonly accessToken: string | null;
-
   readonly eventType: "usage";
 
   readonly language: string | null;
@@ -84,12 +81,19 @@ export class StatsStore {
    */
   private isDevMode: boolean;
 
-  public constructor(appName: AppName, version: string, isDevMode: boolean) {
+  /** function for getting GitHub access token if one exists.
+   * We don't want to store the token, due to security concerns, and also
+   * because the token might expire.
+   */
+  private getAccessToken: () => string;
+
+  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken: () => string) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
 
     this.isDevMode = isDevMode;
+    this.getAccessToken = getAccessToken;
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -173,7 +177,6 @@ export class StatsStore {
         version: this.version,
         platform: process.platform,
         guid: getGUID(),
-        accessToken: null,
         eventType: "usage",
         date: getDate(),
         language: null,
@@ -182,6 +185,7 @@ export class StatsStore {
   }
 
   public async incrementMeasure(measureName: string) {
+    // todo: don't increment in dev mode or if the user has opted out
     await measuresDb.incrementMeasure(measureName);
   }
 
@@ -189,13 +193,25 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async post(body: object): Promise<Response> {
+    const requestHeaders: {[name: string]: string} = { "Content-Type": "application/json" };
+    const token = this.getAccessToken();
+    if (token) {
+      requestHeaders.Authorization = `token ${token}`;
+    }
     const options: object = {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: requestHeaders,
       body: JSON.stringify(body),
-  };
+    };
 
-    return fetch(this.appUrl, options);
+    return this.fetch(this.appUrl, options);
+  }
+
+  /** Exists to enable us to mock fetch in tests
+   * This is public for testing purposes only.
+   */
+  public async fetch(url: string, options: object): Promise<Response> {
+    return fetch(url, options);
   }
 
   /** Should the app report its daily stats? */
