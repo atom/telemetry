@@ -1,5 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName, HasSentOptInPingKey, IMetrics, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName,
+  HasSentOptInPingKey, IMetrics, ReportingLoopInterval, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -21,14 +22,36 @@ describe("StatsStore", function() {
   const version = "1.2.3";
   let store: StatsStore;
   let postStub: sinon.SinonStub;
+  let shouldReportStub: sinon.SinonStub;
   const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
 
   beforeEach(function() {
     store = new StatsStore(AppName.Atom, version, false, getAccessToken);
     postStub = sinon.stub(store, "post");
+    // shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
   });
-  afterEach(async function() {
+  afterEach(function() {
     localStorage.clear();
+  });
+  describe("constructor", function() {
+    it("reports stats when shouldReportDailyStats returns true", function(done) {
+      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
+      postStub.resolves({ status: 200 });
+      setTimeout(() => {
+        sinon.assert.called(postStub);
+        done();
+      // 100ms seems to be enough padding to allow tests to do their thing, but if
+      // these start flaking this number may need to be adjusted.
+      }, ReportingLoopInterval + 100);
+    });
+    it("does not report stats when shouldReportDailyStats returns false", function(done) {
+      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
+      postStub.resolves({ status: 200 });
+      setTimeout(() => {
+        sinon.assert.notCalled(postStub);
+        done();
+      }, ReportingLoopInterval + 100);
+    });
   });
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
