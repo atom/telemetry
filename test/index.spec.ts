@@ -1,6 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName,
-  HasSentOptInPingKey, IMetrics, ReportingLoopInterval, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, DailyStatsReportInterval, HasSentOptInPingKey,
+  LastDailyStatsReportKey, IMetrics, ReportingLoopInterval, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -28,21 +28,20 @@ describe("StatsStore", function() {
   beforeEach(function() {
     store = new StatsStore(AppName.Atom, version, false, getAccessToken);
     postStub = sinon.stub(store, "post");
-    // shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
   });
   afterEach(function() {
     localStorage.clear();
   });
   describe("constructor", function() {
-    it("reports stats when shouldReportDailyStats returns true", function(done) {
-      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
+    it.only("reports stats when shouldReportDailyStats returns true", function(done) {
+      // shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
       postStub.resolves({ status: 200 });
       setTimeout(() => {
         sinon.assert.called(postStub);
         done();
       // 100ms seems to be enough padding to allow tests to do their thing, but if
       // these start flaking this number may need to be adjusted.
-      }, ReportingLoopInterval + 100);
+      }, ReportingLoopInterval * 2);
     });
     it("does not report stats when shouldReportDailyStats returns false", function(done) {
       shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
@@ -152,6 +151,15 @@ describe("StatsStore", function() {
       sinon.assert.calledWith(sendPingStub, true);
     });
   });
+  // describe("shouldReportDailyStats", function() {
+  //   it("returns false if not enough time has elapsed since last report", function() {
+  //     const fakeReportingInterval = 2;
+  //     localStorage.setItem(LastDailyStatsReportKey, Date.now.toString());
+  //   });
+  //   it("returns true if enough time has elapsed since last report", function() {
+
+  //   });
+  // });
   describe("sendOptInStatusPing", async function() {
     it("handles success", async function() {
       postStub.resolves({status: 200});
