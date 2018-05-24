@@ -12,7 +12,7 @@ This project and everyone participating in it is governed by the [Code of Conduc
 ## What should I know before I get started?
 `telemetry` is hosted in the Atom org, but the intention is that it could be used by other GitHub tools.  This is why it's a npm module and not simply an Atom package.
 
-That said, Atom is the first user of `telemetry`.  If you are looking to contribute to where `telemetry` is called from Atom, please See the [Atom contributing guide](https://github.com/atom/atom/blob/master/CONTRIBUTING.md)
+That said, Atom is the first user of `telemetry`.  If you are looking to contribute to where `telemetry` is called from Atom, please see the [Atom contributing guide](https://github.com/atom/atom/blob/master/CONTRIBUTING.md).
 
 ## How Can I Contribute?
 
