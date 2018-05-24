@@ -100,8 +100,6 @@ export class StatsStore {
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
 
-    // localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
-    // console.log(localStorage);
     this.timer = this.setTimer();
 
     if (optOutValue) {
