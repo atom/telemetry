@@ -18,7 +18,7 @@ That said, Atom is the first user of `telemetry`.  If you are looking to contrib
 
 ### Reporting Bugs
 
-Before creating bug reports, please check existing issues as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible. Fill out [the required template](ISSUE_TEMPLATE.md), the information it asks for helps us resolve issues faster.
+Before creating bug reports, please check existing issues as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible. Fill out [the required template](ISSUE_TEMPLATE.md); the information it asks for helps us resolve issues faster.
 
 > **Note:** If you find a **Closed** issue that seems like it is the same thing that you're experiencing, open a new issue and include a link to the original issue in the body of your new one.
 
