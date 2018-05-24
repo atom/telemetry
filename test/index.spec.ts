@@ -1,6 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName, DailyStatsReportInterval, HasSentOptInPingKey,
-  LastDailyStatsReportKey, IMetrics, ReportingLoopInterval, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
+  LastDailyStatsReportKey, IMetrics, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -33,23 +33,23 @@ describe("StatsStore", function() {
     localStorage.clear();
   });
   describe("constructor", function() {
-    it("reports stats when shouldReportDailyStats returns true", function(done) {
-      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
+    it("reports stats when hasReportingIntervalElapsed returns true", function(done) {
+      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => true);
       postStub.resolves({ status: 200 });
       setTimeout(() => {
         sinon.assert.called(postStub);
         done();
       // 100ms seems to be enough padding to allow tests to do their thing, but if
       // these start flaking this number may need to be adjusted.
-      }, ReportingLoopInterval + 100);
+      }, ReportingLoopIntervalInMs + 100);
     });
     it("does not report stats when shouldReportDailyStats returns false", function(done) {
-      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
+      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
       postStub.resolves({ status: 200 });
       setTimeout(() => {
         sinon.assert.notCalled(postStub);
         done();
-      }, ReportingLoopInterval + 100);
+      }, ReportingLoopIntervalInMs + 100);
     });
   });
   describe("reportStats", async function() {
@@ -151,14 +151,14 @@ describe("StatsStore", function() {
       sinon.assert.calledWith(sendPingStub, true);
     });
   });
-  describe("shouldReportDailyStats", function() {
+  describe("hasReportingIntervalElapsed", function() {
     it("returns false if not enough time has elapsed since last report", function() {
       localStorage.setItem(LastDailyStatsReportKey, (Date.now()).toString());
-      assert.isFalse(store.shouldReportDailyStats());
+      assert.isFalse(store.hasReportingIntervalElapsed());
     });
     it("returns true if enough time has elapsed since last report", function() {
-      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportInterval - 1).toString());
-      assert.isTrue(store.shouldReportDailyStats());
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportIntervalInMs - 1).toString());
+      assert.isTrue(store.hasReportingIntervalElapsed());
     });
   });
   describe("sendOptInStatusPing", async function() {

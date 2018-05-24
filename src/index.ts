@@ -19,10 +19,10 @@ export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 const StatsMeasuresKey = "stats-measures";
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
-export const DailyStatsReportInterval = 1000 * 60 * 60 * 24;
+export const DailyStatsReportIntervalInMs = 1000 * 60 * 60 * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopInterval = 1000;
+export const ReportingLoopIntervalInMs = 1000;
 
 interface IDimensions {
   /** The app version. */
@@ -83,7 +83,7 @@ export class StatsStore {
    */
   private isDevMode: boolean;
 
-  /** Class that stores metrics so they can be stored across sessions */
+  /** Instance of a class thats stores metrics so they can be stored across sessions */
   private measuresDb = new MeasuresDatabase();
 
   /** function for getting GitHub access token if one exists.
@@ -232,7 +232,7 @@ export class StatsStore {
   /** Should the app report its daily stats?
    * Public for testing purposes only.
    */
-  public shouldReportDailyStats(): boolean {
+  public hasReportingIntervalElapsed(): boolean {
 
     const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
@@ -245,7 +245,7 @@ export class StatsStore {
     }
 
     const now = Date.now();
-    return (now - lastDate) > DailyStatsReportInterval;
+    return (now - lastDate) > DailyStatsReportIntervalInMs;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
@@ -253,10 +253,10 @@ export class StatsStore {
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
-      if (this.shouldReportDailyStats()) {
+      if (this.hasReportingIntervalElapsed()) {
         this.reportStats(getISODate);
       }
-    }, ReportingLoopInterval);
+    }, ReportingLoopIntervalInMs);
 
     // make sure we don't block node from exiting
     // not sure if this is a problem in an actual running app but it definitely breaks tests.
