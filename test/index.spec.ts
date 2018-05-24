@@ -33,15 +33,15 @@ describe("StatsStore", function() {
     localStorage.clear();
   });
   describe("constructor", function() {
-    it.only("reports stats when shouldReportDailyStats returns true", function(done) {
-      // shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
+    it("reports stats when shouldReportDailyStats returns true", function(done) {
+      shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => true);
       postStub.resolves({ status: 200 });
       setTimeout(() => {
         sinon.assert.called(postStub);
         done();
       // 100ms seems to be enough padding to allow tests to do their thing, but if
       // these start flaking this number may need to be adjusted.
-      }, ReportingLoopInterval * 2);
+      }, ReportingLoopInterval + 100);
     });
     it("does not report stats when shouldReportDailyStats returns false", function(done) {
       shouldReportStub = sinon.stub(store, "shouldReportDailyStats").callsFake(() => false);
@@ -151,15 +151,16 @@ describe("StatsStore", function() {
       sinon.assert.calledWith(sendPingStub, true);
     });
   });
-  // describe("shouldReportDailyStats", function() {
-  //   it("returns false if not enough time has elapsed since last report", function() {
-  //     const fakeReportingInterval = 2;
-  //     localStorage.setItem(LastDailyStatsReportKey, Date.now.toString());
-  //   });
-  //   it("returns true if enough time has elapsed since last report", function() {
-
-  //   });
-  // });
+  describe("shouldReportDailyStats", function() {
+    it("returns false if not enough time has elapsed since last report", function() {
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now()).toString());
+      assert.isFalse(store.shouldReportDailyStats());
+    });
+    it("returns true if enough time has elapsed since last report", function() {
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportInterval - 1).toString());
+      assert.isTrue(store.shouldReportDailyStats());
+    });
+  });
   describe("sendOptInStatusPing", async function() {
     it("handles success", async function() {
       postStub.resolves({status: 200});

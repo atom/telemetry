@@ -234,8 +234,8 @@ export class StatsStore {
   /** Should the app report its daily stats?
    * Public for testing purposes only.
    */
-  public shouldReportDailyStats(statsReportInterval: number): boolean {
-    console.log("lastDailyStatsReportKey", localStorage.getItem(LastDailyStatsReportKey));
+  public shouldReportDailyStats(): boolean {
+
     const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
     if (lastDateString && lastDateString.length > 0) {
@@ -245,16 +245,9 @@ export class StatsStore {
     if (isNaN(lastDate)) {
       lastDate = 0;
     }
-    console.log("LAST DATE", lastDate);
 
     const now = Date.now();
-    console.log("NOW", now);
-    console.log("last date", lastDate);
-    console.log("now - lastDate", now - lastDate);
-    console.log("something else", statsReportInterval);
-    const value = (now - lastDate) > statsReportInterval;
-    console.log("!!! VALUE", value);
-    return value;
+    return (now - lastDate) > DailyStatsReportInterval;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
@@ -262,7 +255,7 @@ export class StatsStore {
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
-      if (this.shouldReportDailyStats(DailyStatsReportInterval)) {
+      if (this.shouldReportDailyStats()) {
         this.reportStats(getISODate);
       }
     }, ReportingLoopInterval);
