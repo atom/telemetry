@@ -33,21 +33,25 @@ describe("StatsStore", function() {
     localStorage.clear();
   });
   describe("constructor", function() {
-    it("reports stats when hasReportingIntervalElapsed returns true", function(done) {
-      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => true);
+    let clock: sinon.SinonFakeTimers;
+    beforeEach(function() {
+      clock = sinon.useFakeTimers();
       postStub.resolves({ status: 200 });
+    });
+    afterEach(function() {
+      clock.restore();
+    });
+    it("reports stats when hasReportingIntervalElapsed returns true", function() {
+      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => true);
       setTimeout(() => {
         sinon.assert.called(postStub);
-        done();
-      // todo (tt, 5/2018): would probably be better to use sinon fake clock here.
       }, ReportingLoopIntervalInMs + 100);
     });
-    it("does not report stats when shouldReportDailyStats returns false", function(done) {
+    it("does not report stats when shouldReportDailyStats returns false", function() {
       shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
       postStub.resolves({ status: 200 });
       setTimeout(() => {
         sinon.assert.notCalled(postStub);
-        done();
       }, ReportingLoopIntervalInMs + 100);
     });
   });

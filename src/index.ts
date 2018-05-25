@@ -103,7 +103,7 @@ export class StatsStore {
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
 
-    this.timer = this.setTimer(ReportingLoopIntervalInMs);
+    this.timer = this.getTimer(ReportingLoopIntervalInMs);
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -252,7 +252,7 @@ export class StatsStore {
   }
 
   /** Set a timer so we can report the stats when the time comes. */
-  private setTimer(loopInterval: number): NodeJS.Timer {
+  private getTimer(loopInterval: number): NodeJS.Timer {
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
