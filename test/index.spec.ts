@@ -1,5 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName, HasSentOptInPingKey, IMetrics, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
+  LastDailyStatsReportKey, IMetrics, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -21,14 +22,38 @@ describe("StatsStore", function() {
   const version = "1.2.3";
   let store: StatsStore;
   let postStub: sinon.SinonStub;
+  let shouldReportStub: sinon.SinonStub;
   const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
 
   beforeEach(function() {
     store = new StatsStore(AppName.Atom, version, false, getAccessToken);
     postStub = sinon.stub(store, "post");
   });
-  afterEach(async function() {
+  afterEach(function() {
     localStorage.clear();
+  });
+  describe("constructor", function() {
+    let clock: sinon.SinonFakeTimers;
+    beforeEach(function() {
+      clock = sinon.useFakeTimers();
+      postStub.resolves({ status: 200 });
+    });
+    afterEach(function() {
+      clock.restore();
+    });
+    it("reports stats when hasReportingIntervalElapsed returns true", function() {
+      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => true);
+      setTimeout(() => {
+        sinon.assert.called(postStub);
+      }, ReportingLoopIntervalInMs + 100);
+    });
+    it("does not report stats when shouldReportDailyStats returns false", function() {
+      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
+      postStub.resolves({ status: 200 });
+      setTimeout(() => {
+        sinon.assert.notCalled(postStub);
+      }, ReportingLoopIntervalInMs + 100);
+    });
   });
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
@@ -127,6 +152,16 @@ describe("StatsStore", function() {
 
       await store.setOptOut(false);
       sinon.assert.calledWith(sendPingStub, true);
+    });
+  });
+  describe("hasReportingIntervalElapsed", function() {
+    it("returns false if not enough time has elapsed since last report", function() {
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now()).toString());
+      assert.isFalse(store.hasReportingIntervalElapsed());
+    });
+    it("returns true if enough time has elapsed since last report", function() {
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportIntervalInMs - 1).toString());
+      assert.isTrue(store.hasReportingIntervalElapsed());
     });
   });
   describe("sendOptInStatusPing", async function() {

@@ -7,7 +7,7 @@ import MeasuresDatabase from "./database";
 
 const baseUsageApi = "http://localhost:4000/api/usage/";
 
-const LastDailyStatsReportKey = "last-daily-stats-report";
+export const LastDailyStatsReportKey = "last-daily-stats-report";
 
 /** The localStorage key for whether the user has opted out. */
 export const StatsOptOutKey = "stats-opt-out";
@@ -18,8 +18,14 @@ export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 /** The localStorage key where feature usage data is tracked. */
 const StatsMeasuresKey = "stats-measures";
 
+/** milliseconds in an hour (for readability, dawg) */
+const hours = 60 * 60 * 1000;
+
 /** How often daily stats should be submitted (i.e., 24 hours). */
-const DailyStatsReportInterval = 1000 * 60 * 60 * 24;
+export const DailyStatsReportIntervalInMs = hours * 24;
+
+/** How often (in milliseconds) we check to see if it's time to report stats. */
+export const ReportingLoopIntervalInMs = hours * 4;
 
 interface IDimensions {
   /** The app version. */
@@ -60,6 +66,8 @@ const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
 
+  private timer: NodeJS.Timer;
+
   /** Has the user opted out of stats reporting? */
   private optOut: boolean;
 
@@ -78,14 +86,14 @@ export class StatsStore {
    */
   private isDevMode: boolean;
 
+  /** Instance of a class thats stores metrics so they can be stored across sessions */
+  private measuresDb = new MeasuresDatabase();
+
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
    * because the token might expire.
    */
   private getAccessToken: () => string;
-
-  /** Class that wraps db where metrics are stored so they can persist across sessions. */
-  private measuresDb = new MeasuresDatabase();
 
   public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken: () => string) {
     this.version = version;
@@ -94,6 +102,8 @@ export class StatsStore {
 
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
+
+    this.timer = this.getTimer(ReportingLoopIntervalInMs);
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -132,7 +142,8 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
-        this.measuresDb.clearMeasures();
+        await localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
+        await this.measuresDb.clearMeasures();
         console.log("stats successfully reported");
       }
     } catch (err) {
@@ -221,8 +232,11 @@ export class StatsStore {
     return fetch(url, options);
   }
 
-  /** Should the app report its daily stats? */
-  private shouldReportDailyStats(): boolean {
+  /** Should the app report its daily stats?
+   * Public for testing purposes only.
+   */
+  public hasReportingIntervalElapsed(): boolean {
+
     const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
     if (lastDateString && lastDateString.length > 0) {
@@ -234,6 +248,23 @@ export class StatsStore {
     }
 
     const now = Date.now();
-    return now - lastDate > DailyStatsReportInterval;
+    return (now - lastDate) > DailyStatsReportIntervalInMs;
+  }
+
+  /** Set a timer so we can report the stats when the time comes. */
+  private getTimer(loopInterval: number): NodeJS.Timer {
+    // todo (tt, 5/2018): maybe we shouldn't even set up the timer
+    // in dev mode or if the user has opted out.
+    const timer = setInterval(() => {
+      if (this.hasReportingIntervalElapsed()) {
+        this.reportStats(getISODate);
+      }
+    }, loopInterval);
+
+    // make sure we don't block node from exiting
+    // not sure if this is a problem in an actual running app but it definitely breaks tests.
+    // https://stackoverflow.com/questions/48172363/mocha-test-suite-never-ends-when-setinterval-running
+    timer.unref();
+    return timer;
   }
 }
