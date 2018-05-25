@@ -18,11 +18,14 @@ export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 /** The localStorage key where feature usage data is tracked. */
 const StatsMeasuresKey = "stats-measures";
 
+/** milliseconds in an hour (for readability, dawg) */
+const hours = 60 * 60 * 1000;
+
 /** How often daily stats should be submitted (i.e., 24 hours). */
-export const DailyStatsReportIntervalInMs = 1000 * 60 * 60 * 24;
+export const DailyStatsReportIntervalInMs = hours * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopIntervalInMs = 1000;
+export const ReportingLoopIntervalInMs = hours * 4;
 
 interface IDimensions {
   /** The app version. */
@@ -100,7 +103,7 @@ export class StatsStore {
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
 
-    this.timer = this.setTimer();
+    this.timer = this.setTimer(ReportingLoopIntervalInMs);
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -249,14 +252,14 @@ export class StatsStore {
   }
 
   /** Set a timer so we can report the stats when the time comes. */
-  private setTimer(): NodeJS.Timer {
+  private setTimer(loopInterval: number): NodeJS.Timer {
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
       if (this.hasReportingIntervalElapsed()) {
         this.reportStats(getISODate);
       }
-    }, ReportingLoopIntervalInMs);
+    }, loopInterval);
 
     // make sure we don't block node from exiting
     // not sure if this is a problem in an actual running app but it definitely breaks tests.

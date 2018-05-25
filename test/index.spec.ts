@@ -39,8 +39,7 @@ describe("StatsStore", function() {
       setTimeout(() => {
         sinon.assert.called(postStub);
         done();
-      // 100ms seems to be enough padding to allow tests to do their thing, but if
-      // these start flaking this number may need to be adjusted.
+      // todo (tt, 5/2018): would probably be better to use sinon fake clock here.
       }, ReportingLoopIntervalInMs + 100);
     });
     it("does not report stats when shouldReportDailyStats returns false", function(done) {
