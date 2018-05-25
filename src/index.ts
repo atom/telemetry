@@ -36,7 +36,7 @@ interface IDimensions {
 
   readonly eventType: "usage";
 
-  readonly language: string | null;
+  readonly language: string;
 }
 
 export interface IMetrics {
@@ -179,7 +179,7 @@ export class StatsStore {
         guid: getGUID(),
         eventType: "usage",
         date: getDate(),
-        language: null,
+        language: process.env.LANG || "",
       },
     };
   }

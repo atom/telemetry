@@ -163,6 +163,7 @@ describe("StatsStore", function() {
       expect(dimensions.date).to.eq(getDate());
       expect(dimensions.eventType).to.eq("usage");
       expect(dimensions.guid).to.eq(getGUID());
+      expect(dimensions.language).to.eq(process.env.LANG);
 
       const measures = event.measures;
       expect(measures).to.deep.include({ [measure1]: 1});
