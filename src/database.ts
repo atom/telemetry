@@ -32,7 +32,7 @@ export default class MeasuresDatabase {
     await this.events.clear();
   }
 
-  public async getEvents(): Promise<object> {
+  public async getEvents(): Promise<object[]> {
     const events = await this.events.find();
     events.forEach((event) => {
       // honey badger don't care about lokijis meta data.

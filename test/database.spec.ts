@@ -6,7 +6,6 @@ describe("measuresDb", async function() {
   const measuresDb = new MeasuresDatabase();
   beforeEach(async function() {
     await measuresDb.clearData();
-    console.log(await measuresDb.getEvents());
   });
   describe("addCustomEvent", async function() {
     it("adds a single event", async function() {

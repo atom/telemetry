@@ -51,6 +51,9 @@ export interface IMetrics {
   // metrics names are defined by the client and thus aren't knowable
   // at compile time here.
   measures: object;
+
+  // array of custom events that can be defined by the client
+  customEvents: object[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -185,6 +188,7 @@ export class StatsStore {
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
       measures: await this.measuresDb.getMeasures(),
+      customEvents: await this.measuresDb.getEvents(),
       dimensions: {
         version: this.version,
         platform: process.platform,
@@ -194,6 +198,10 @@ export class StatsStore {
         language: process.env.LANG || "",
       },
     };
+  }
+
+  public async addCustomEvent(event: object) {
+    await this.measuresDb.addCustomEvent(event);
   }
 
   public async incrementMeasure(measureName: string) {

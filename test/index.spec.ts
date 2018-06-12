@@ -190,6 +190,11 @@ describe("StatsStore", function() {
       await store.incrementMeasure(measure2);
       await store.incrementMeasure(measure2);
 
+      const event1 = { type: "open", grammar: "javascript", timestamp: "now" };
+      const event2 = { type: "deprecation", message: "woop woop" };
+      await store.addCustomEvent(event1);
+      await store.addCustomEvent(event2);
+
       const event = await store.getDailyStats(getDate);
 
       const dimensions = event.dimensions;
@@ -203,6 +208,10 @@ describe("StatsStore", function() {
       const measures = event.measures;
       expect(measures).to.deep.include({ [measure1]: 1});
       expect(measures).to.deep.include({ [measure2]: 2});
+
+      const customEvents = event.customEvents;
+      expect(customEvents).to.deep.include(event1);
+      expect(customEvents).to.deep.include(event2);
     });
   });
 });
