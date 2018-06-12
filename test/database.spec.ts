@@ -5,7 +5,24 @@ describe("measuresDb", async function() {
   const measureName = "commits";
   const measuresDb = new MeasuresDatabase();
   beforeEach(async function() {
-    await measuresDb.clearMeasures();
+    await measuresDb.clearData();
+    console.log(await measuresDb.getEvents());
+  });
+  describe("addCustomEvent", async function() {
+    it("adds a single event", async function() {
+      const event = { type: "open", grammar: "javascript", timestamp: "now" };
+      await measuresDb.addCustomEvent(event);
+      const events: any = await measuresDb.getEvents();
+      assert.deepEqual(event, events[0]);
+    });
+    it("adds multiple events", async function() {
+      const event1 = { type: "open", grammar: "javascript", timestamp: "now" };
+      const event2 = { type: "deprecation", message: "woop woop"};
+      await measuresDb.addCustomEvent(event1);
+      await measuresDb.addCustomEvent(event2);
+      const events: any = await measuresDb.getEvents();
+      assert.deepEqual([event1, event2], events);
+    });
   });
   describe("incrementMeasure", async function() {
     it("adds a new measure if it does not exist", async function() {
@@ -44,7 +61,7 @@ describe("measuresDb", async function() {
   describe("clearMeasures", async function() {
     it("clears db containing single measure", async function() {
       await measuresDb.incrementMeasure(measureName);
-      await measuresDb.clearMeasures();
+      await measuresDb.clearData();
       const measures = await measuresDb.getMeasures();
       assert.deepEqual(measures, {});
     });
@@ -52,14 +69,14 @@ describe("measuresDb", async function() {
       await measuresDb.incrementMeasure(measureName);
       await measuresDb.incrementMeasure(measureName);
       await measuresDb.incrementMeasure("foo");
-      await measuresDb.clearMeasures();
+      await measuresDb.clearData();
       const measures = await measuresDb.getMeasures();
       assert.deepEqual(measures, {});
     });
     it("clearing an empty db does not throw an error", async function() {
       const measures = await measuresDb.getMeasures();
       assert.deepEqual(measures, {});
-      await measuresDb.clearMeasures();
+      await measuresDb.clearData();
     });
   });
 });

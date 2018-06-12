@@ -1,28 +1,45 @@
 import * as loki from "lokijs";
 
 export default class MeasuresDatabase {
-  private database: Collection<any>;
+  private measures: Collection<any>;
+  private events: Collection<any>;
 
   public constructor() {
     const db = new loki("stats-measures");
-    this.database = db.addCollection("measures");
+    this.measures = db.addCollection("measures");
+    this.events = db.addCollection("events");
+  }
+
+  public async addCustomEvent(customEvent: object) {
+    this.events.insert(customEvent);
   }
 
   public async incrementMeasure(measureName: string) {
     const existing = await this.getUnformattedMeasure(measureName);
     if (existing) {
       existing.count += 1;
-      this.database.update(existing);
+      this.measures.update(existing);
     } else {
-      this.database.insert({ name: measureName, count: 1});
+      this.measures.insert({ name: measureName, count: 1});
     }
   }
 
-  /** Clears all measures that exist in the store.
+  /** Clears all values that exist in the database.
    * returns nothing.
    */
-  public async clearMeasures() {
-    await this.database.findAndRemove();
+  public async clearData() {
+    await this.measures.clear();
+    await this.events.clear();
+  }
+
+  public async getEvents(): Promise<object> {
+    const events = await this.events.find();
+    events.forEach((event) => {
+      // honey badger don't care about lokijis meta data.
+      delete event.$loki;
+      delete event.meta;
+    });
+    return events;
   }
 
   /** Get all measures.
@@ -33,7 +50,7 @@ export default class MeasuresDatabase {
   public async getMeasures():
     Promise<{[name: string]: number}> {
     const measures: { [name: string]: number } = {};
-    this.database.find().forEach((measure) => {
+    this.measures.find().forEach((measure) => {
       measures[measure.name] = measure.count;
     });
     return measures;
@@ -46,7 +63,7 @@ export default class MeasuresDatabase {
    * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
    */
   private async getUnformattedMeasure(measureName: string) {
-    const existing = await this.database.find({ name: measureName });
+    const existing = await this.measures.find({ name: measureName });
 
     if (existing.length > 1) {
       // we should never get into this situation because if we are using the lokijs

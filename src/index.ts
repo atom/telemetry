@@ -4,7 +4,8 @@ import { getGUID } from "./uuid";
 import MeasuresDatabase from "./database";
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
-
+// todo (tt, 6/2018): we should be using the production api.
+// Change this after Central supports Atom metrics.
 const baseUsageApi = "http://localhost:4000/api/usage/";
 
 export const LastDailyStatsReportKey = "last-daily-stats-report";
@@ -143,7 +144,7 @@ export class StatsStore {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
         await localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
-        await this.measuresDb.clearMeasures();
+        await this.measuresDb.clearData();
         console.log("stats successfully reported");
       }
     } catch (err) {
