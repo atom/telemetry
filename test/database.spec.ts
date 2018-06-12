@@ -11,7 +11,7 @@ describe("measuresDb", async function() {
     it("adds a single event", async function() {
       const event = { type: "open", grammar: "javascript", timestamp: "now" };
       await measuresDb.addCustomEvent(event);
-      const events: any = await measuresDb.getEvents();
+      const events: any = await measuresDb.getCustomEvents();
       assert.deepEqual(event, events[0]);
     });
     it("adds multiple events", async function() {
@@ -19,7 +19,7 @@ describe("measuresDb", async function() {
       const event2 = { type: "deprecation", message: "woop woop"};
       await measuresDb.addCustomEvent(event1);
       await measuresDb.addCustomEvent(event2);
-      const events: any = await measuresDb.getEvents();
+      const events: any = await measuresDb.getCustomEvents();
       assert.deepEqual([event1, event2], events);
     });
   });

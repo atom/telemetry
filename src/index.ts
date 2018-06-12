@@ -188,7 +188,7 @@ export class StatsStore {
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
       measures: await this.measuresDb.getMeasures(),
-      customEvents: await this.measuresDb.getEvents(),
+      customEvents: await this.measuresDb.getCustomEvents(),
       dimensions: {
         version: this.version,
         platform: process.platform,

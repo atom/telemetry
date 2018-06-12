@@ -2,16 +2,16 @@ import * as loki from "lokijs";
 
 export default class MeasuresDatabase {
   private measures: Collection<any>;
-  private events: Collection<any>;
+  private customEvents: Collection<any>;
 
   public constructor() {
     const db = new loki("stats-measures");
     this.measures = db.addCollection("measures");
-    this.events = db.addCollection("events");
+    this.customEvents = db.addCollection("customEvents");
   }
 
   public async addCustomEvent(customEvent: object) {
-    this.events.insert(customEvent);
+    this.customEvents.insert(customEvent);
   }
 
   public async incrementMeasure(measureName: string) {
@@ -29,11 +29,11 @@ export default class MeasuresDatabase {
    */
   public async clearData() {
     await this.measures.clear();
-    await this.events.clear();
+    await this.customEvents.clear();
   }
 
-  public async getEvents(): Promise<object[]> {
-    const events = await this.events.find();
+  public async getCustomEvents(): Promise<object[]> {
+    const events = await this.customEvents.find();
     events.forEach((event) => {
       // honey badger don't care about lokijis meta data.
       delete event.$loki;
