@@ -55,3 +55,8 @@ However, apps might want to collect more complex metrics with arbitrary metadata
 const event = { type: "open", grammar: "javascript", timestamp: "now" };
 await measuresDb.addCustomEvent(event);
 ```
+
+## Publishing a new release
+
+Follow [these instructions](https://docs.npmjs.com/getting-started/publishing-npm-packages) for releasing a new version with npm. In order for client apps to use a new version, bump the version of `telemetry-github` in the `package.json` file, and then run `npm install` again.
+
