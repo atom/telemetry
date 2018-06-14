@@ -4,13 +4,6 @@
 
 This app can be used from any GitHub client application that speaks JavaScript and has access to localStorage.
 
-## License
-
-
-[MIT](https://github.com/atom/telemetry/blob/master/LICENSE)
-
-When using any GitHub logos, be sure to follow the [GitHub logo guidelines](https://github.com/logos).
-
 ## Getting started
 
 to install package and dependencies:
@@ -63,3 +56,10 @@ await store.addCustomEvent(event, "open");
 ## Publishing a new release
 
 Follow [these instructions](https://docs.npmjs.com/getting-started/publishing-npm-packages) for releasing a new version with npm. In order for client apps to use a new version, bump the version of `telemetry-github` in the `package.json` file, and then run `npm install` again.
+
+## License
+
+
+[MIT](https://github.com/atom/telemetry/blob/master/LICENSE)
+
+When using any GitHub logos, be sure to follow the [GitHub logo guidelines](https://github.com/logos).
