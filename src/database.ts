@@ -1,15 +1,27 @@
 import * as loki from "lokijs";
 
-// import { getISODate } from "./index";
+export default class StatsDatabase {
 
-export default class MeasuresDatabase {
-  private measures: Collection<any>;
+  /**
+   * Counters which can be incremented.
+   * Most commonly used for usage stats that don't need
+   * additional metadata.
+   */
+  private counters: Collection<any>;
+
+  /**
+   * Events are used to record application metrics that need additional metadata
+   * For example, file open events where you'd want to track the language of the file.
+   * Events are an object, to give clients maximal flexibility.  Date is automatically added
+   * for you in ISO-8601 format.
+   */
   private customEvents: Collection<any>;
+
   private getDate: () => string;
 
   public constructor(getISODate: () => string) {
-    const db = new loki("stats-measures");
-    this.measures = db.addCollection("measures");
+    const db = new loki("stats-database");
+    this.counters = db.addCollection("counters");
     this.customEvents = db.addCollection("customEvents");
     this.getDate = () => getISODate();
   }
@@ -19,13 +31,13 @@ export default class MeasuresDatabase {
     this.customEvents.insert(customEvent);
   }
 
-  public async incrementMeasure(measureName: string) {
-    const existing = await this.getUnformattedMeasure(measureName);
+  public async incrementCounter(counterName: string) {
+    const existing = await this.getUnformattedCounter(counterName);
     if (existing) {
       existing.count += 1;
-      this.measures.update(existing);
+      this.counters.update(existing);
     } else {
-      this.measures.insert({ name: measureName, count: 1});
+      this.counters.insert({ name: counterName, count: 1});
     }
   }
 
@@ -33,7 +45,7 @@ export default class MeasuresDatabase {
    * returns nothing.
    */
   public async clearData() {
-    await this.measures.clear();
+    await this.counters.clear();
     await this.customEvents.clear();
   }
 
@@ -47,28 +59,28 @@ export default class MeasuresDatabase {
     return events;
   }
 
-  /** Get all measures.
+  /** Get all counters.
    * This method strips the lokijs metadata, which external
    * callers shouldn't care about.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
-  public async getMeasures():
+  public async getCounters():
     Promise<{[name: string]: number}> {
-    const measures: { [name: string]: number } = {};
-    this.measures.find().forEach((measure) => {
-      measures[measure.name] = measure.count;
+    const counters: { [name: string]: number } = {};
+    this.counters.find().forEach((counter) => {
+      counters[counter.name] = counter.count;
     });
-    return measures;
+    return counters;
   }
 
-  /** Get a single measure.
+  /** Get a single counter.
    * Don't strip lokijs metadata, because if we want to update existing
    * items we need to pass that shizz back in.
    * Returns something like:
    * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
    */
-  private async getUnformattedMeasure(measureName: string) {
-    const existing = await this.measures.find({ name: measureName });
+  private async getUnformattedCounter(counterName: string) {
+    const existing = await this.counters.find({ name: counterName });
 
     if (existing.length > 1) {
       // we should never get into this situation because if we are using the lokijs
@@ -77,7 +89,7 @@ export default class MeasuresDatabase {
       // Attack ships on fire off the shoulder of Orion.
       // Cosmic rays flipping bits and influencing the outcome of elections.
       // So throw an error just in case.
-      throw new Error("multiple measures with the same name");
+      throw new Error("multiple counters with the same name");
     } else if (existing.length < 1) {
       return null;
     } else {
