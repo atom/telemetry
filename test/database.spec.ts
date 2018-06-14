@@ -1,65 +1,117 @@
 import { assert } from "chai";
-import MeasuresDatabase from "../src/database";
+import StatsDatabase from "../src/database";
 
-describe("measuresDb", async function() {
-  const measureName = "commits";
-  const measuresDb = new MeasuresDatabase();
+const getDate = () => {
+  return "2018-05-16T21:54:24.500Z";
+};
+
+const grammar = "javascript";
+const openEventType = "open";
+const openEvent = { grammar, eventType: openEventType, date: getDate() };
+
+const deprecateEventType = "deprecate";
+const message = "oh noes";
+const deprecateEvent = { message, eventType: deprecateEventType, date: getDate() };
+
+describe("database", async function() {
+  const counterName = "commits";
+
+  let database: StatsDatabase;
   beforeEach(async function() {
-    await measuresDb.clearMeasures();
+    database = new StatsDatabase(getDate);
   });
-  describe("incrementMeasure", async function() {
-    it("adds a new measure if it does not exist", async function() {
-      const measure = await measuresDb.getMeasures();
-      assert.deepEqual(measure, {});
-      await measuresDb.incrementMeasure(measureName);
-      const incrementedMeasure = await measuresDb.getMeasures();
-      assert.deepEqual(incrementedMeasure, {[measureName]: 1});
+  // inserting into lokijs mutates the passed-in object
+  // so that you can't insert the same object twice.
+  // in real life this isn't a problem because you'd be passing in a new
+  // object every time, but it makes test fixtures annoying.
+  // So just make a new object in every test when you're inserting and move on with your life.
+  describe("addCustomEvent", async function() {
+    it("adds a single event", async function() {
+      await database.addCustomEvent({ grammar }, openEventType);
+      const events: any = await database.getCustomEvents();
+      assert.deepEqual(openEvent, events[0]);
     });
-    it("increments an existing measure", async function() {
-      await measuresDb.incrementMeasure(measureName);
-      const measure = await measuresDb.getMeasures();
-      assert.deepEqual(measure, {[measureName]: 1});
-      await measuresDb.incrementMeasure(measureName);
-      const incrementedMeasure = await measuresDb.getMeasures();
-      assert.deepEqual(incrementedMeasure, { [measureName]: 2});
+    it("adds multiple events", async function() {
+      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent({ message }, deprecateEventType);
+      const events: any = await database.getCustomEvents();
+      assert.deepEqual([openEvent, deprecateEvent], events);
     });
   });
-  describe("getMeasures", async function() {
-  it("gets an empty object if measures do not exist", async function() {
-    const measure = await measuresDb.getMeasures();
-    assert.deepEqual(measure, {});
-  });
-  it("gets a single measure if it exists", async function() {
-    await measuresDb.incrementMeasure(measureName);
-    const measure = await measuresDb.getMeasures();
-    assert.deepEqual(measure, { [measureName]: 1 });
-  });
-  it("gets all measures that exist", async function() {
-    await measuresDb.incrementMeasure(measureName);
-    await measuresDb.incrementMeasure("foo");
-    const measures = await measuresDb.getMeasures();
-    assert.deepEqual(measures, { [measureName]: 1, foo: 1});
-  });
-  });
-  describe("clearMeasures", async function() {
-    it("clears db containing single measure", async function() {
-      await measuresDb.incrementMeasure(measureName);
-      await measuresDb.clearMeasures();
-      const measures = await measuresDb.getMeasures();
-      assert.deepEqual(measures, {});
+  describe("incrementCounter", async function() {
+    it("adds a new counter if it does not exist", async function() {
+      const counter = await database.getCounters();
+      assert.deepEqual(counter, {});
+      await database.incrementCounter(counterName);
+      const incrementedCounter = await database.getCounters();
+      assert.deepEqual(incrementedCounter, {[counterName]: 1});
     });
-    it("clears db containing multiple measures", async function() {
-      await measuresDb.incrementMeasure(measureName);
-      await measuresDb.incrementMeasure(measureName);
-      await measuresDb.incrementMeasure("foo");
-      await measuresDb.clearMeasures();
-      const measures = await measuresDb.getMeasures();
-      assert.deepEqual(measures, {});
+    it("increments an existing counter", async function() {
+      await database.incrementCounter(counterName);
+      const counter = await database.getCounters();
+      assert.deepEqual(counter, {[counterName]: 1});
+      await database.incrementCounter(counterName);
+      const incrementedCounter = await database.getCounters();
+      assert.deepEqual(incrementedCounter, { [counterName]: 2});
+    });
+  });
+  describe("getCounters", async function() {
+  it("gets an empty object if counters do not exist", async function() {
+    const counter = await database.getCounters();
+    assert.deepEqual(counter, {});
+  });
+  it("gets a single counter if it exists", async function() {
+    await database.incrementCounter(counterName);
+    const counter = await database.getCounters();
+    assert.deepEqual(counter, { [counterName]: 1 });
+  });
+  it("gets all counters that exist", async function() {
+    await database.incrementCounter(counterName);
+    await database.incrementCounter("foo");
+    const measures = await database.getCounters();
+    assert.deepEqual(measures, { [counterName]: 1, foo: 1});
+  });
+  });
+  describe("clearData", async function() {
+    it("clears db containing single counter", async function() {
+      await database.incrementCounter(counterName);
+      await database.clearData();
+      const counters = await database.getCounters();
+      assert.deepEqual(counters, {});
+    });
+    it("clears db containing multiple counters", async function() {
+      await database.incrementCounter(counterName);
+      await database.incrementCounter(counterName);
+      await database.incrementCounter("foo");
+      await database.clearData();
+      const counters = await database.getCounters();
+      assert.deepEqual(counters, {});
+    });
+    it("clears db containing single customEvent", async function() {
+      await database.addCustomEvent({ grammar }, openEventType);
+
+      await database.clearData();
+      const events = await database.getCustomEvents();
+
+      assert.deepEqual(events, []);
+    });
+    it("clears db containing multiple customEvents", async function() {
+      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent({ message }, deprecateEventType);
+
+      await database.clearData();
+      const events = await database.getCustomEvents();
+
+      assert.deepEqual(events, []);
     });
     it("clearing an empty db does not throw an error", async function() {
-      const measures = await measuresDb.getMeasures();
-      assert.deepEqual(measures, {});
-      await measuresDb.clearMeasures();
+      const counters = await database.getCounters();
+      assert.deepEqual(counters, {});
+
+      const events = await database.getCustomEvents();
+      assert.deepEqual(events, []);
+
+      await database.clearData();
     });
   });
 });

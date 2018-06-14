@@ -1,10 +1,11 @@
 require("isomorphic-fetch");
 
 import { getGUID } from "./uuid";
-import MeasuresDatabase from "./database";
+import StatsDatabase from "./database";
 
 // const baseUsageApi = 'https://central.github.com/api/usage/';
-
+// todo (tt, 6/2018): we should be using the production api.
+// Change this after Central supports Atom metrics.
 const baseUsageApi = "http://localhost:4000/api/usage/";
 
 export const LastDailyStatsReportKey = "last-daily-stats-report";
@@ -14,9 +15,6 @@ export const StatsOptOutKey = "stats-opt-out";
 
 /** Have we successfully sent the stats opt-in? */
 export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
-
-/** The localStorage key where feature usage data is tracked. */
-const StatsMeasuresKey = "stats-measures";
 
 /** milliseconds in an hour (for readability, dawg) */
 const hours = 60 * 60 * 1000;
@@ -49,7 +47,10 @@ export interface IMetrics {
   dimensions: IDimensions;
   // metrics names are defined by the client and thus aren't knowable
   // at compile time here.
-  measures: object;
+  counters: object;
+
+  // array of custom events that can be defined by the client
+  customEvents: object[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -87,7 +88,7 @@ export class StatsStore {
   private isDevMode: boolean;
 
   /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private measuresDb = new MeasuresDatabase();
+  private database = new StatsDatabase(getISODate);
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -143,7 +144,7 @@ export class StatsStore {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
         await localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
-        await this.measuresDb.clearMeasures();
+        await this.database.clearData();
         console.log("stats successfully reported");
       }
     } catch (err) {
@@ -183,7 +184,8 @@ export class StatsStore {
   // or an annotation that communicates "public for testing only"?
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
-      measures: await this.measuresDb.getMeasures(),
+      counters: await this.database.getCounters(),
+      customEvents: await this.database.getCustomEvents(),
       dimensions: {
         version: this.version,
         platform: process.platform,
@@ -195,8 +197,12 @@ export class StatsStore {
     };
   }
 
-  public async incrementMeasure(measureName: string) {
-    // don't increment in dev mode (because localStorage)
+  public async addCustomEvent(event: object, eventType: string) {
+    await this.database.addCustomEvent(event, eventType);
+  }
+
+  public async incrementCounter(counterName: string) {
+    // don't increment in dev mode because localStorage
     // is shared across dev and non dev windows and there's
     // no way to keep dev and non-dev metrics separate.
     // don't increment if the user has opted out, because
@@ -204,7 +210,7 @@ export class StatsStore {
     if (this.isDevMode || this.optOut) {
       return;
     }
-    await this.measuresDb.incrementMeasure(measureName);
+    await this.database.incrementCounter(counterName);
   }
 
   /** Post some data to our stats endpoint.

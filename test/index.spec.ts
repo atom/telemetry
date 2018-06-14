@@ -58,7 +58,7 @@ describe("StatsStore", function() {
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
     beforeEach(async function() {
-      await store.incrementMeasure("commit");
+      await store.incrementCounter("commit");
       fakeEvent = await store.getDailyStats(getDate);
     });
     it("handles success case", async function() {
@@ -66,18 +66,18 @@ describe("StatsStore", function() {
       await store.reportStats(getDate);
       sinon.assert.calledWith(postStub, fakeEvent);
 
-      // measures should be cleared in success case
-      const measures = (await store.getDailyStats(getDate)).measures;
-      assert.deepEqual(measures, {});
+      // counters should be cleared in success case
+      const counters = (await store.getDailyStats(getDate)).counters;
+      assert.deepEqual(counters, {});
     });
     it("handles failure case", async function() {
       postStub.resolves({ status: 500 });
       await store.reportStats(getDate);
       sinon.assert.calledWith(postStub, fakeEvent);
 
-      // measures should not be cleared if we fail to send daily stats
-      const measures = (await store.getDailyStats(getDate)).measures;
-      assert.deepEqual(measures, fakeEvent.measures);
+      // counters should not be cleared if we fail to send daily stats
+      const counters = (await store.getDailyStats(getDate)).counters;
+      assert.deepEqual(counters, fakeEvent.counters);
     });
     it("does not report stats when app is in dev mode", async function() {
       const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
@@ -96,24 +96,24 @@ describe("StatsStore", function() {
       sinon.assert.callCount(postStub, 1);
     });
   });
-  describe("incrementMeasure", async function() {
-    const measureName = "commits";
-    it("does not increment metrics in dev mode", async function() {
+  describe("incrementCounter", async function() {
+    const counterName = "commits";
+    it("does not increment counter in dev mode", async function() {
       const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
-      await storeInDevMode.incrementMeasure(measureName);
+      await storeInDevMode.incrementCounter(counterName);
       const stats = await storeInDevMode.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {});
+      assert.deepEqual(stats.counters, {});
     });
-    it("does not increment metrics if user has opted out", async function() {
+    it("does not increment counter if user has opted out", async function() {
       store.setOptOut(true);
-      await store.incrementMeasure(measureName);
+      await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {});
+      assert.deepEqual(stats.counters, {});
     });
-    it("does increment metrics if non dev and user has opted in", async function() {
-      await store.incrementMeasure(measureName);
+    it("does increment counter if non dev and user has opted in", async function() {
+      await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {[measureName]: 1});
+      assert.deepEqual(stats.counters, {[counterName]: 1});
     });
   });
   describe("post", async function() {
@@ -184,11 +184,14 @@ describe("StatsStore", function() {
   });
   describe("getDailyStats", async function() {
     it("event has all the fields we expect", async function() {
-      const measure1 = "commits";
-      const measure2 = "openGitPane";
-      await store.incrementMeasure(measure1);
-      await store.incrementMeasure(measure2);
-      await store.incrementMeasure(measure2);
+      const counter1 = "commits";
+      const counter2 = "openGitPane";
+      await store.incrementCounter(counter1);
+      await store.incrementCounter(counter2);
+      await store.incrementCounter(counter2);
+
+      await store.addCustomEvent({ grammar: "javascript" }, "open");
+      await store.addCustomEvent({ message : "oh noes"}, "deprecate");
 
       const event = await store.getDailyStats(getDate);
 
@@ -200,9 +203,12 @@ describe("StatsStore", function() {
       expect(dimensions.guid).to.eq(getGUID());
       expect(dimensions.language).to.eq(process.env.LANG);
 
-      const measures = event.measures;
-      expect(measures).to.deep.include({ [measure1]: 1});
-      expect(measures).to.deep.include({ [measure2]: 2});
+      const counters = event.counters;
+      expect(counters).to.deep.include({ [counter1]: 1});
+      expect(counters).to.deep.include({ [counter2]: 2});
+
+      const customEvents = event.customEvents;
+      expect(customEvents.length).to.eq(2);
     });
   });
 });
