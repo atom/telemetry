@@ -51,9 +51,13 @@ Counters are a great fit for understanding the number of times a certain action 
 
 However, apps might want to collect more complex metrics with arbitrary metadata. For example, Atom currently collects "file open" events, which preserve the grammar (aka language) of the opened file.  For those use cases, the `addCustomEvent` function is your friend.  `addCustomEvent` takes any object and stuffs it in the database, giving clients the flexibility to define their own data destiny.  The events are sent to the metrics back end along with the daily payload.
 
+Events must include a type, which is the second argument to `addCustomEvent`. A timestamp is added for you in ISO-8601 format.
+
 ```
-const event = { type: "open", grammar: "javascript", timestamp: "now" };
-await store.addCustomEvent(event);
+const event = { grammar: "javascript" };
+await store.addCustomEvent(event, "open");
+
+// { "date": "2018-06-14T21:01:33.602Z", "eventType": "open", "grammar": "javascript" }
 ```
 
 ## Publishing a new release

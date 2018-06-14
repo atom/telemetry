@@ -26,8 +26,9 @@ export default class StatsDatabase {
     this.getDate = () => getISODate();
   }
 
-  public async addCustomEvent(customEvent: any) {
+  public async addCustomEvent(customEvent: any, eventType: string) {
     customEvent.date = this.getDate();
+    customEvent.eventType = eventType;
     this.customEvents.insert(customEvent);
   }
 

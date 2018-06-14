@@ -5,23 +5,13 @@ const getDate = () => {
   return "2018-05-16T21:54:24.500Z";
 };
 
-// inserting into lokijs mutates the passed-in object
-// so that you can't insert the same object twice. In prod this
-// shouldn't be a problem because you'd use a new object for each event,
-// but for test fixtures where we want to reuse objects it's a problem.
-// thus, these functions that return a new object every time.
-function getEvent1() {
-  return { type: "open", grammar: "javascript" };
-}
+const grammar = "javascript";
+const openEventType = "open";
+const openEvent = { grammar, eventType: openEventType, date: getDate() };
 
-function getEvent2() {
-  return { type: "deprecation", message: "woop woop" };
-}
-
-function addDate(event: any) {
-  event.date = getDate();
-  return event;
-}
+const deprecateEventType = "deprecate";
+const message = "oh noes";
+const deprecateEvent = { message, eventType: deprecateEventType, date: getDate() };
 
 describe("database", async function() {
   const counterName = "commits";
@@ -30,17 +20,22 @@ describe("database", async function() {
   beforeEach(async function() {
     database = new StatsDatabase(getDate);
   });
+  // inserting into lokijs mutates the passed-in object
+  // so that you can't insert the same object twice.
+  // in real life this isn't a problem because you'd be passing in a new
+  // object every time, but it makes test fixtures annoying.
+  // So just make a new object in every test when you're inserting and move on with your life.
   describe("addCustomEvent", async function() {
     it("adds a single event", async function() {
-      await database.addCustomEvent(getEvent1());
+      await database.addCustomEvent({ grammar }, openEventType);
       const events: any = await database.getCustomEvents();
-      assert.deepEqual(addDate(getEvent1()), events[0]);
+      assert.deepEqual(openEvent, events[0]);
     });
     it("adds multiple events", async function() {
-      await database.addCustomEvent(getEvent1());
-      await database.addCustomEvent(getEvent2());
+      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent({ message }, deprecateEventType);
       const events: any = await database.getCustomEvents();
-      assert.deepEqual([addDate(getEvent1()), addDate(getEvent2())], events);
+      assert.deepEqual([openEvent, deprecateEvent], events);
     });
   });
   describe("incrementCounter", async function() {
@@ -93,7 +88,7 @@ describe("database", async function() {
       assert.deepEqual(counters, {});
     });
     it("clears db containing single customEvent", async function() {
-      await database.addCustomEvent(getEvent1());
+      await database.addCustomEvent({ grammar }, openEventType);
 
       await database.clearData();
       const events = await database.getCustomEvents();
@@ -101,8 +96,8 @@ describe("database", async function() {
       assert.deepEqual(events, []);
     });
     it("clears db containing multiple customEvents", async function() {
-      await database.addCustomEvent(getEvent1());
-      await database.addCustomEvent(getEvent2());
+      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent({ message }, deprecateEventType);
 
       await database.clearData();
       const events = await database.getCustomEvents();

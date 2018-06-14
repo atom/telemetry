@@ -197,12 +197,12 @@ export class StatsStore {
     };
   }
 
-  public async addCustomEvent(event: object) {
-    await this.database.addCustomEvent(event);
+  public async addCustomEvent(event: object, eventType: string) {
+    await this.database.addCustomEvent(event, eventType);
   }
 
   public async incrementCounter(counterName: string) {
-    // don't increment in dev mode (because localStorage)
+    // don't increment in dev mode because localStorage
     // is shared across dev and non dev windows and there's
     // no way to keep dev and non-dev metrics separate.
     // don't increment if the user has opted out, because

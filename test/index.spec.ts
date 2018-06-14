@@ -190,10 +190,8 @@ describe("StatsStore", function() {
       await store.incrementCounter(counter2);
       await store.incrementCounter(counter2);
 
-      const event1 = { type: "open", grammar: "javascript", timestamp: "now" };
-      const event2 = { type: "deprecation", message: "woop woop" };
-      await store.addCustomEvent(event1);
-      await store.addCustomEvent(event2);
+      await store.addCustomEvent({ grammar: "javascript" }, "open");
+      await store.addCustomEvent({ message : "oh noes"}, "deprecate");
 
       const event = await store.getDailyStats(getDate);
 
@@ -210,8 +208,7 @@ describe("StatsStore", function() {
       expect(counters).to.deep.include({ [counter2]: 2});
 
       const customEvents = event.customEvents;
-      expect(customEvents).to.deep.include(event1);
-      expect(customEvents).to.deep.include(event2);
+      expect(customEvents.length).to.eq(2);
     });
   });
 });
