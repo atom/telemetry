@@ -1,16 +1,21 @@
 import * as loki from "lokijs";
 
+// import { getISODate } from "./index";
+
 export default class MeasuresDatabase {
   private measures: Collection<any>;
   private customEvents: Collection<any>;
+  private getDate: () => string;
 
-  public constructor() {
+  public constructor(getISODate: () => string) {
     const db = new loki("stats-measures");
     this.measures = db.addCollection("measures");
     this.customEvents = db.addCollection("customEvents");
+    this.getDate = () => getISODate();
   }
 
-  public async addCustomEvent(customEvent: object) {
+  public async addCustomEvent(customEvent: any) {
+    customEvent.date = this.getDate();
     this.customEvents.insert(customEvent);
   }
 

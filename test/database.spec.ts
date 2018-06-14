@@ -1,26 +1,46 @@
 import { assert } from "chai";
 import MeasuresDatabase from "../src/database";
 
+const getDate = () => {
+  return "2018-05-16T21:54:24.500Z";
+};
+
+// inserting into lokijs mutates the passed-in object
+// so that you can't insert the same object twice. In prod this
+// shouldn't be a problem because you'd use a new object for each event,
+// but for test fixtures where we want to reuse objects it's a problem.
+// thus, these functions that return a new object every time.
+function getEvent1() {
+  return { type: "open", grammar: "javascript" };
+}
+
+function getEvent2() {
+  return { type: "deprecation", message: "woop woop" };
+}
+
+function addDate(event: any) {
+  event.date = getDate();
+  return event;
+}
+
 describe("measuresDb", async function() {
   const measureName = "commits";
-  const measuresDb = new MeasuresDatabase();
+
+  let measuresDb: MeasuresDatabase;
   beforeEach(async function() {
-    await measuresDb.clearData();
+    measuresDb = new MeasuresDatabase(getDate);
   });
   describe("addCustomEvent", async function() {
     it("adds a single event", async function() {
-      const event = { type: "open", grammar: "javascript", timestamp: "now" };
-      await measuresDb.addCustomEvent(event);
+      await measuresDb.addCustomEvent(getEvent1());
       const events: any = await measuresDb.getCustomEvents();
-      assert.deepEqual(event, events[0]);
+      assert.deepEqual(addDate(getEvent1()), events[0]);
     });
     it("adds multiple events", async function() {
-      const event1 = { type: "open", grammar: "javascript", timestamp: "now" };
-      const event2 = { type: "deprecation", message: "woop woop"};
-      await measuresDb.addCustomEvent(event1);
-      await measuresDb.addCustomEvent(event2);
+      await measuresDb.addCustomEvent(getEvent1());
+      await measuresDb.addCustomEvent(getEvent2());
       const events: any = await measuresDb.getCustomEvents();
-      assert.deepEqual([event1, event2], events);
+      assert.deepEqual([addDate(getEvent1()), addDate(getEvent2())], events);
     });
   });
   describe("incrementMeasure", async function() {
@@ -72,9 +92,30 @@ describe("measuresDb", async function() {
       const measures = await measuresDb.getMeasures();
       assert.deepEqual(measures, {});
     });
+    it("clears db containing single customEvent", async function() {
+      await measuresDb.addCustomEvent(getEvent1());
+
+      await measuresDb.clearData();
+      const events = await measuresDb.getCustomEvents();
+
+      assert.deepEqual(events, []);
+    });
+    it("clears db containing multiple customEvents", async function() {
+      await measuresDb.addCustomEvent(getEvent1());
+      await measuresDb.addCustomEvent(getEvent2());
+
+      await measuresDb.clearData();
+      const events = await measuresDb.getCustomEvents();
+
+      assert.deepEqual(events, []);
+    });
     it("clearing an empty db does not throw an error", async function() {
       const measures = await measuresDb.getMeasures();
       assert.deepEqual(measures, {});
+
+      const events = await measuresDb.getCustomEvents();
+      assert.deepEqual(events, []);
+
       await measuresDb.clearData();
     });
   });
