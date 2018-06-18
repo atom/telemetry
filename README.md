@@ -4,6 +4,8 @@
 
 This app can be used from any GitHub client application that speaks JavaScript and has access to localStorage.
 
+This repo is open source more because we care about privacy and want to be transparent about how we collect metrics, than because we think anybody outside of GitHub is likely to find this code useful.
+
 ## Getting started
 
 to install package and dependencies:
