@@ -121,9 +121,6 @@ export class StatsStore {
 
   /** Set whether the user has opted out of stats reporting. */
   public async setOptOut(optOut: boolean): Promise<void> {
-    if (this.isDevMode) {
-      return;
-    }
     const changed = this.optOut !== optOut;
 
     this.optOut = optOut;
@@ -161,6 +158,9 @@ export class StatsStore {
   * public for testing purposes only.
   */
   public async sendOptInStatusPing(optIn: boolean): Promise<void> {
+    if (this.isDevMode) {
+      return;
+    }
     const direction = optIn ? "in" : "out";
     try {
       const response = await this.post({
