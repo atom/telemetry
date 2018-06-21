@@ -267,10 +267,11 @@ export class StatsStore {
       }
     }, loopInterval);
 
-    // make sure we don't block node from exiting
-    // not sure if this is a problem in an actual running app but it definitely breaks tests.
-    // https://stackoverflow.com/questions/48172363/mocha-test-suite-never-ends-when-setinterval-running
-    timer.unref();
+    if (timer.unref !== undefined) {
+      // make sure we don't block node from exiting in tests
+      // https://stackoverflow.com/questions/48172363/mocha-test-suite-never-ends-when-setinterval-running
+      timer.unref();
+    }
     return timer;
   }
 }
