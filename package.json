@@ -1,6 +1,6 @@
 {
   "name": "telemetry-github",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "telemetry for GitHub client apps",
   "main": "./out/index.js",
   "scripts": {
