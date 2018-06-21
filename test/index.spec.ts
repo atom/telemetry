@@ -141,6 +141,11 @@ describe("StatsStore", function() {
       await store.setOptOut(true);
       assert.ok(localStorage.getItem(StatsOptOutKey));
     });
+    it("does not send ping in dev mode", async function() {
+      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
+      await storeInDevMode.setOptOut(true);
+      sinon.assert.notCalled(postStub);
+    });
     it("sends one status ping when status is changed", async function() {
       const sendPingStub = sinon.stub(store, "sendOptInStatusPing").resolves(true);
       await store.setOptOut(true);
