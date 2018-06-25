@@ -198,6 +198,13 @@ describe("StatsStore", function() {
       await store.addCustomEvent("open", { grammar: "javascript" });
       await store.addCustomEvent("deprecate", { message: "oh noes" });
 
+      const timingEventName = "load";
+      const loadTimeInMs1 = 100;
+      const loadTimeInMs2 = 200;
+      const metadata = { meta: "data"};
+      await store.addTiming(timingEventName, loadTimeInMs1, metadata);
+      await store.addTiming(timingEventName, loadTimeInMs2, metadata);
+
       const event = await store.getDailyStats(getDate);
 
       const dimensions = event.dimensions;
@@ -214,6 +221,9 @@ describe("StatsStore", function() {
 
       const customEvents = event.customEvents;
       expect(customEvents.length).to.eq(2);
+
+      const timings = event.timings;
+      expect(timings.length).to.eq(2);
     });
   });
 });

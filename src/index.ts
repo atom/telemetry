@@ -51,6 +51,9 @@ export interface IMetrics {
 
   // array of custom events that can be defined by the client
   customEvents: object[];
+
+  // array of timing events
+  timings: object[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -187,6 +190,7 @@ export class StatsStore {
     return {
       counters: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),
+      timings: await this.database.getTimings(),
       dimensions: {
         version: this.version,
         platform: process.platform,
@@ -202,6 +206,24 @@ export class StatsStore {
     await this.database.addCustomEvent(eventType, event);
   }
 
+  /**
+   * Add timing data to the stats store, to be sent with the daily metrics requests.
+   */
+  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
+    // don't increment in dev mode because localStorage
+    // is shared across dev and non dev windows and there's
+    // no way to keep dev and non-dev metrics separate.
+    // don't increment if the user has opted out, because
+    // we want to respect user privacy.
+    if (this.isDevMode || this.optOut) {
+      return;
+    }
+    await this.database.addTiming(eventType, durationInMilliseconds, metadata);
+  }
+
+  /**
+   * Increment a counter.  This is used to track usage statistics.
+   */
   public async incrementCounter(counterName: string) {
     // don't increment in dev mode because localStorage
     // is shared across dev and non dev windows and there's
