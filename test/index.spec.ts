@@ -195,8 +195,8 @@ describe("StatsStore", function() {
       await store.incrementCounter(counter2);
       await store.incrementCounter(counter2);
 
-      await store.addCustomEvent({ grammar: "javascript" }, "open");
-      await store.addCustomEvent({ message : "oh noes"}, "deprecate");
+      await store.addCustomEvent("open", { grammar: "javascript" });
+      await store.addCustomEvent("deprecate", { message: "oh noes" });
 
       const event = await store.getDailyStats(getDate);
 

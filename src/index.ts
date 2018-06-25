@@ -200,8 +200,8 @@ export class StatsStore {
     };
   }
 
-  public async addCustomEvent(event: object, eventType: string) {
-    await this.database.addCustomEvent(event, eventType);
+  public async addCustomEvent(eventType: string, event: object) {
+    await this.database.addCustomEvent(eventType, event);
   }
 
   public async incrementCounter(counterName: string) {

@@ -27,13 +27,13 @@ describe("database", async function() {
   // So just make a new object in every test when you're inserting and move on with your life.
   describe("addCustomEvent", async function() {
     it("adds a single event", async function() {
-      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent(openEventType, { grammar });
       const events: any = await database.getCustomEvents();
       assert.deepEqual(openEvent, events[0]);
     });
     it("adds multiple events", async function() {
-      await database.addCustomEvent({ grammar }, openEventType);
-      await database.addCustomEvent({ message }, deprecateEventType);
+      await database.addCustomEvent(openEventType, { grammar });
+      await database.addCustomEvent(deprecateEventType, { message });
       const events: any = await database.getCustomEvents();
       assert.deepEqual([openEvent, deprecateEvent], events);
     });
@@ -88,7 +88,7 @@ describe("database", async function() {
       assert.deepEqual(counters, {});
     });
     it("clears db containing single customEvent", async function() {
-      await database.addCustomEvent({ grammar }, openEventType);
+      await database.addCustomEvent(openEventType, { grammar });
 
       await database.clearData();
       const events = await database.getCustomEvents();
@@ -96,8 +96,8 @@ describe("database", async function() {
       assert.deepEqual(events, []);
     });
     it("clears db containing multiple customEvents", async function() {
-      await database.addCustomEvent({ grammar }, openEventType);
-      await database.addCustomEvent({ message }, deprecateEventType);
+      await database.addCustomEvent(openEventType, { grammar});
+      await database.addCustomEvent(deprecateEventType, { message });
 
       await database.clearData();
       const events = await database.getCustomEvents();
