@@ -96,7 +96,7 @@ export class StatsStore {
    */
   private getAccessToken: () => string;
 
-  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken: () => string) {
+  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken = () => "") {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
@@ -183,8 +183,6 @@ export class StatsStore {
   }
 
   // public for testing purposes only
-  // todo(tt, 5/2018): is there a way of making things "package private" in typescript?
-  // or an annotation that communicates "public for testing only"?
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
       counters: await this.database.getCounters(),
