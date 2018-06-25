@@ -38,6 +38,16 @@ describe("database", async function() {
       assert.deepEqual([openEvent, deprecateEvent], events);
     });
   });
+  describe("addTiming", async function() {
+    it("adds a single timer", async function() {
+      const eventType = "load";
+      const durationInMilliseconds = 100;
+      const metadata = { meta: "data" };
+      await database.addTiming(eventType, durationInMilliseconds, metadata);
+      const timings = await database.getTimings();
+      assert.deepEqual(timings[0], { eventType, durationInMilliseconds, metadata, date: getDate() });
+    });
+  });
   describe("incrementCounter", async function() {
     it("adds a new counter if it does not exist", async function() {
       const counter = await database.getCounters();
@@ -103,6 +113,14 @@ describe("database", async function() {
       const events = await database.getCustomEvents();
 
       assert.deepEqual(events, []);
+    });
+    it("clears db containing timing", async function() {
+      await database.addTiming("load", 100);
+
+      await database.clearData();
+      const timings = await database.getTimings();
+
+      assert.deepEqual(timings, []);
     });
     it("clearing an empty db does not throw an error", async function() {
       const counters = await database.getCounters();
