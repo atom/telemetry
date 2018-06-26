@@ -25,8 +25,8 @@ describe("database", async function() {
   // in real life this isn't a problem because you'd be passing in a new
   // object every time, but it makes test fixtures annoying.
   // So just make a new object in every test when you're inserting and move on with your life.
-  describe("addCustomEvent", async function() {
-    it("adds a single event", async function() {
+  describe("custom event methods", async function() {
+    it("adds and gets a single event", async function() {
       await database.addCustomEvent(openEventType, { grammar });
       const events: any = await database.getCustomEvents();
       assert.deepEqual(openEvent, events[0]);
@@ -36,6 +36,32 @@ describe("database", async function() {
       await database.addCustomEvent(deprecateEventType, { message });
       const events: any = await database.getCustomEvents();
       assert.deepEqual([openEvent, deprecateEvent], events);
+    });
+  });
+  describe("timing methods", async function() {
+    it("adds and gets a single timer", async function() {
+      const eventType = "load";
+      const durationInMilliseconds = 100;
+      const metadata = { meta: "data" };
+      await database.addTiming(eventType, durationInMilliseconds, metadata);
+
+      const timings = await database.getTimings();
+      assert.deepEqual(timings[0], { eventType, durationInMilliseconds, metadata, date: getDate() });
+    });
+    it("adds and gets multiple timers", async function() {
+      const eventType = "load";
+      const durationInMilliseconds1 = 100;
+      const durationInMilliseconds2 = 200;
+      const metadata = { meta: "data" };
+      await database.addTiming(eventType, durationInMilliseconds1, metadata);
+      await database.addTiming(eventType, durationInMilliseconds2, metadata);
+
+      const timings = await database.getTimings();
+      assert.deepEqual(timings[0], { eventType,
+        durationInMilliseconds: durationInMilliseconds1, metadata, date: getDate() });
+      assert.deepEqual(timings[1], {
+        eventType,
+        durationInMilliseconds: durationInMilliseconds2, metadata, date: getDate() });
     });
   });
   describe("incrementCounter", async function() {
@@ -103,6 +129,14 @@ describe("database", async function() {
       const events = await database.getCustomEvents();
 
       assert.deepEqual(events, []);
+    });
+    it("clears db containing timing", async function() {
+      await database.addTiming("load", 100);
+
+      await database.clearData();
+      const timings = await database.getTimings();
+
+      assert.deepEqual(timings, []);
     });
     it("clearing an empty db does not throw an error", async function() {
       const counters = await database.getCounters();

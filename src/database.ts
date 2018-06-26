@@ -17,12 +17,18 @@ export default class StatsDatabase {
    */
   private customEvents: Collection<any>;
 
+  /**
+   * Timing is used to record application metrics that deal with latency.
+   */
+  private timings: Collection<any>;
+
   private getDate: () => string;
 
   public constructor(getISODate: () => string) {
     const db = new loki("stats-database");
     this.counters = db.addCollection("counters");
     this.customEvents = db.addCollection("customEvents");
+    this.timings = db.addCollection("timing");
     this.getDate = () => getISODate();
   }
 
@@ -42,12 +48,27 @@ export default class StatsDatabase {
     }
   }
 
+  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
+    const timingData = { eventType, durationInMilliseconds, metadata, date: this.getDate() };
+    this.timings.insert(timingData);
+  }
+
   /** Clears all values that exist in the database.
    * returns nothing.
    */
   public async clearData() {
     await this.counters.clear();
     await this.customEvents.clear();
+    await this.timings.clear();
+  }
+
+  public async getTimings(): Promise<object[]> {
+    const timings = await this.timings.find();
+    timings.forEach((timing) => {
+      delete timing.$loki;
+      delete timing.meta;
+    });
+    return timings;
   }
 
   public async getCustomEvents(): Promise<object[]> {
