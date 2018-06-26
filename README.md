@@ -57,7 +57,7 @@ await store.addCustomEvent("open", event);
 
 ### Timers
 
-Understanding your app's latency is important. You can use the `addTimer` API to send latency metrics.
+You can use the `addTimer` API to send latency metrics. While of course you could use `addCustomEvent` to record latency metrics, using this endpoint allows us to have a consistent event format across apps.
 
 ```
 const eventType = "appStartup";
