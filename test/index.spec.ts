@@ -96,6 +96,25 @@ describe("StatsStore", function() {
       sinon.assert.callCount(postStub, 1);
     });
   });
+  describe("addTimer", async function() {
+    it("does not add timer in dev mode", async function() {
+      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
+      await storeInDevMode.addTiming("load", 100);
+      const stats = await storeInDevMode.getDailyStats(getDate);
+      assert.deepEqual(stats.timings, []);
+    });
+    it("does not add timer if user has opted out", async function() {
+      store.setOptOut(true);
+      await store.addTiming("load", 100);
+      const stats = await store.getDailyStats(getDate);
+      assert.deepEqual(stats.timings, []);
+    });
+    it("does add timer if user has opted in and not in dev mode", async function() {
+      await store.addTiming("load", 100);
+      const stats = await store.getDailyStats(getDate);
+      assert.deepEqual(stats.timings.length, 1);
+    });
+  });
   describe("incrementCounter", async function() {
     const counterName = "commits";
     it("does not increment counter in dev mode", async function() {
@@ -198,6 +217,13 @@ describe("StatsStore", function() {
       await store.addCustomEvent("open", { grammar: "javascript" });
       await store.addCustomEvent("deprecate", { message: "oh noes" });
 
+      const timingEventName = "load";
+      const loadTimeInMs1 = 100;
+      const loadTimeInMs2 = 200;
+      const metadata = { meta: "data"};
+      await store.addTiming(timingEventName, loadTimeInMs1, metadata);
+      await store.addTiming(timingEventName, loadTimeInMs2, metadata);
+
       const event = await store.getDailyStats(getDate);
 
       const dimensions = event.dimensions;
@@ -214,6 +240,9 @@ describe("StatsStore", function() {
 
       const customEvents = event.customEvents;
       expect(customEvents.length).to.eq(2);
+
+      const timings = event.timings;
+      expect(timings.length).to.eq(2);
     });
   });
 });

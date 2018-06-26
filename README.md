@@ -36,7 +36,7 @@ store.setOptOut(true);
 
 ```
 
-Please note that there are several methods of the `StatsStore` class that are public for unit testing purposes only.  The methods describe above are the ones that clients should care about.
+Please note that there are several methods of the `StatsStore` class that are public for unit testing purposes only.  The methods describe below are the ones that clients should care about.
 
 ### Counters vs. custom events
 
@@ -46,13 +46,25 @@ Counters are a great fit for understanding the number of times a certain action 
 
 However, apps might want to collect more complex metrics with arbitrary metadata. For example, Atom currently collects "file open" events, which preserve the grammar (aka language) of the opened file.  For those use cases, the `addCustomEvent` function is your friend.  `addCustomEvent` takes any object and stuffs it in the database, giving clients the flexibility to define their own data destiny.  The events are sent to the metrics back end along with the daily payload.
 
-Events must include a type, which is the second argument to `addCustomEvent`. A timestamp is added for you in ISO-8601 format.
+Events must include a type, which is the first argument to `addCustomEvent`. A timestamp is added for you in ISO-8601 format.
 
 ```
 const event = { grammar: "javascript" };
-await store.addCustomEvent(event, "open");
+await store.addCustomEvent("open", event);
 
 // { "date": "2018-06-14T21:01:33.602Z", "eventType": "open", "grammar": "javascript" }
+```
+
+### Timers
+
+You can use the `addTimer` API to send latency metrics. While of course you could use `addCustomEvent` to record latency metrics, using this endpoint allows us to have a consistent event format across apps.
+
+```
+const eventType = "appStartup";
+const loadTimeInMilliseconds = 42;
+const metadata = {spam: "ham"};
+// metadata is optional
+store.addTiming(eventType, loadTimeInMilliseconds, metadata);
 ```
 
 ## Publishing a new release
