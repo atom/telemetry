@@ -3,10 +3,9 @@ require("isomorphic-fetch");
 import { getGUID } from "./uuid";
 import StatsDatabase from "./database";
 
-// const baseUsageApi = 'https://central.github.com/api/usage/';
-// todo (tt, 6/2018): we should be using the production api.
-// Change this after Central supports Atom metrics.
-const baseUsageApi = "http://localhost:4000/api/usage/";
+// if you're running a local instance of central, use
+// "http://localhost:4000/api/usage/" instead.
+const baseUsageApi = "https://central.github.com/api/usage/";
 
 export const LastDailyStatsReportKey = "last-daily-stats-report";
 
@@ -258,6 +257,7 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async fetch(url: string, options: object): Promise<Response> {
+    console.log(options);
     return fetch(url, options);
   }
 
