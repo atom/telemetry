@@ -227,7 +227,7 @@ describe("StatsStore", function() {
       const event = await store.getDailyStats(getDate);
 
       const dimensions = event.dimensions;
-      expect(dimensions.version).to.eq(version);
+      expect(dimensions.appVersion).to.eq(version);
       expect(dimensions.platform).to.eq(process.platform);
       expect(dimensions.date).to.eq(getDate());
       expect(dimensions.eventType).to.eq("usage");

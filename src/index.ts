@@ -26,7 +26,7 @@ export const ReportingLoopIntervalInMs = hours * 4;
 
 interface IDimensions {
   /** The app version. */
-  readonly version: string;
+  readonly appVersion: string;
 
   /** the platform */
   readonly platform: string;
@@ -191,7 +191,7 @@ export class StatsStore {
       customEvents: await this.database.getCustomEvents(),
       timings: await this.database.getTimings(),
       dimensions: {
-        version: this.version,
+        appVersion: this.version,
         platform: process.platform,
         guid: getGUID(),
         eventType: "usage",
