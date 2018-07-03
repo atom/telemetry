@@ -1,5 +1,3 @@
-require("isomorphic-fetch");
-
 import { getGUID } from "./uuid";
 import StatsDatabase from "./database";
 
