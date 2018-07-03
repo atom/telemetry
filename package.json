@@ -15,7 +15,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "es6-promise": "^4.2.4",
     "lokijs": "^1.5.4",
     "uuid": "^3.2.1"
   },
