@@ -265,7 +265,6 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async fetch(url: string, options: object): Promise<Response> {
-    console.log(options);
     return fetch(url, options);
   }
 
