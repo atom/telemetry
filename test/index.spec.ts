@@ -208,6 +208,9 @@ describe("StatsStore", function() {
   });
   describe("getDailyStats", async function() {
     it("event has all the fields we expect", async function() {
+      const gitHubUser = "annthurium";
+      store.setGitHubUser(gitHubUser);
+
       const counter1 = "commits";
       const counter2 = "openGitPane";
       await store.incrementCounter(counter1);
@@ -233,6 +236,7 @@ describe("StatsStore", function() {
       expect(dimensions.eventType).to.eq("usage");
       expect(dimensions.guid).to.eq(getGUID());
       expect(dimensions.language).to.eq(process.env.LANG);
+      expect(dimensions.gitHubUser).to.eq(gitHubUser);
 
       const counters = event.counters;
       expect(counters).to.deep.include({ [counter1]: 1});
@@ -243,6 +247,10 @@ describe("StatsStore", function() {
 
       const timings = event.timings;
       expect(timings.length).to.eq(2);
+    });
+    it("handles null gitHubUser", async function() {
+      const event = await store.getDailyStats(getDate);
+      expect(event.dimensions.gitHubUser).to.be.null;
     });
   });
 });

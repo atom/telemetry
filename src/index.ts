@@ -38,6 +38,8 @@ interface IDimensions {
   readonly eventType: "usage";
 
   readonly language: string;
+
+  readonly gitHubUser: string | null;
 }
 
 export interface IMetrics {
@@ -96,6 +98,8 @@ export class StatsStore {
    */
   private getAccessToken: () => string;
 
+  private gitHubUser: string | null;
+
   public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken = () => "") {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
@@ -103,6 +107,7 @@ export class StatsStore {
 
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
+    this.gitHubUser = null;
 
     this.timer = this.getTimer(ReportingLoopIntervalInMs);
 
@@ -117,6 +122,10 @@ export class StatsStore {
     } else {
       this.optOut = false;
     }
+  }
+
+  public setGitHubUser(gitHubUser: string) {
+    this.gitHubUser = gitHubUser;
   }
 
   /** Set whether the user has opted out of stats reporting. */
@@ -195,6 +204,7 @@ export class StatsStore {
         eventType: "usage",
         date: getDate(),
         language: process.env.LANG || "",
+        gitHubUser: this.gitHubUser,
       },
     };
   }
@@ -255,7 +265,6 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async fetch(url: string, options: object): Promise<Response> {
-    console.log(options);
     return fetch(url, options);
   }
 
