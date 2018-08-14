@@ -67,7 +67,7 @@ describe("StatsStore", function() {
       sinon.assert.calledWith(postStub, fakeEvent);
 
       // counters should be cleared in success case
-      const counters = (await store.getDailyStats(getDate)).counters;
+      const counters = (await store.getDailyStats(getDate)).measures;
       assert.deepEqual(counters, {});
     });
     it("handles failure case", async function() {
@@ -76,8 +76,8 @@ describe("StatsStore", function() {
       sinon.assert.calledWith(postStub, fakeEvent);
 
       // counters should not be cleared if we fail to send daily stats
-      const counters = (await store.getDailyStats(getDate)).counters;
-      assert.deepEqual(counters, fakeEvent.counters);
+      const counters = (await store.getDailyStats(getDate)).measures;
+      assert.deepEqual(counters, fakeEvent.measures);
     });
     it("does not report stats when app is in dev mode", async function() {
       const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
@@ -121,18 +121,18 @@ describe("StatsStore", function() {
       const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
       await storeInDevMode.incrementCounter(counterName);
       const stats = await storeInDevMode.getDailyStats(getDate);
-      assert.deepEqual(stats.counters, {});
+      assert.deepEqual(stats.measures, {});
     });
     it("does not increment counter if user has opted out", async function() {
       store.setOptOut(true);
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.counters, {});
+      assert.deepEqual(stats.measures, {});
     });
     it("does increment counter if non dev and user has opted in", async function() {
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.counters, {[counterName]: 1});
+      assert.deepEqual(stats.measures, {[counterName]: 1});
     });
   });
   describe("post", async function() {
@@ -238,7 +238,7 @@ describe("StatsStore", function() {
       expect(dimensions.language).to.eq(process.env.LANG);
       expect(dimensions.gitHubUser).to.eq(gitHubUser);
 
-      const counters = event.counters;
+      const counters = event.measures;
       expect(counters).to.deep.include({ [counter1]: 1});
       expect(counters).to.deep.include({ [counter2]: 2});
 

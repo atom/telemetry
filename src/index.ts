@@ -46,7 +46,7 @@ export interface IMetrics {
   dimensions: IDimensions;
   // metrics names are defined by the client and thus aren't knowable
   // at compile time here.
-  counters: object;
+  measures: object;
 
   // array of custom events that can be defined by the client
   customEvents: object[];
@@ -194,7 +194,7 @@ export class StatsStore {
   // public for testing purposes only
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     return {
-      counters: await this.database.getCounters(),
+      measures: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),
       timings: await this.database.getTimings(),
       dimensions: {
