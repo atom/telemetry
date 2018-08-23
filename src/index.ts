@@ -60,6 +60,7 @@ export interface IMetrics {
  */
 export enum AppName {
   Atom = "atom",
+  VSCode = "vscode"
 }
 
 /** helper for getting the date, which we pass in so that we can mock
