@@ -1,13 +1,14 @@
 import * as loki from "lokijs";
+import { ICounter } from "./interfaces";
+import { MultipleCounterError } from "./errors";
 
 export default class StatsDatabase {
-
   /**
    * Counters which can be incremented.
    * Most commonly used for usage stats that don't need
    * additional metadata.
    */
-  private counters: Collection<any>;
+  private counters: Collection<ICounter>;
 
   /**
    * Events are used to record application metrics that need additional metadata
@@ -44,7 +45,7 @@ export default class StatsDatabase {
       existing.count += 1;
       this.counters.update(existing);
     } else {
-      this.counters.insert({ name: counterName, count: 1});
+      this.counters.insert({ name: counterName, count: 1 });
     }
   }
 
@@ -64,7 +65,7 @@ export default class StatsDatabase {
 
   public async getTimings(): Promise<object[]> {
     const timings = await this.timings.find();
-    timings.forEach((timing) => {
+    timings.forEach(timing => {
       delete timing.$loki;
       delete timing.meta;
     });
@@ -73,7 +74,7 @@ export default class StatsDatabase {
 
   public async getCustomEvents(): Promise<object[]> {
     const events = await this.customEvents.find();
-    events.forEach((event) => {
+    events.forEach(event => {
       // honey badger don't care about lokijis meta data.
       delete event.$loki;
       delete event.meta;
@@ -86,10 +87,9 @@ export default class StatsDatabase {
    * callers shouldn't care about.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
-  public async getCounters():
-    Promise<{[name: string]: number}> {
+  public async getCounters(): Promise<{ [name: string]: number }> {
     const counters: { [name: string]: number } = {};
-    this.counters.find().forEach((counter) => {
+    this.counters.find().forEach(counter => {
       counters[counter.name] = counter.count;
     });
     return counters;
@@ -101,7 +101,7 @@ export default class StatsDatabase {
    * Returns something like:
    * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
    */
-  private async getUnformattedCounter(counterName: string) {
+  private async getUnformattedCounter(counterName: string): Promise<ICounter | undefined> {
     const existing = await this.counters.find({ name: counterName });
 
     if (existing.length > 1) {
@@ -111,11 +111,13 @@ export default class StatsDatabase {
       // Attack ships on fire off the shoulder of Orion.
       // Cosmic rays flipping bits and influencing the outcome of elections.
       // So throw an error just in case.
-      throw new Error("multiple counters with the same name");
-    } else if (existing.length < 1) {
-      return null;
-    } else {
+      throw new MultipleCounterError();
+    }
+
+    if (existing.length === 1) {
       return existing[0];
     }
+
+    return undefined;
   }
 }

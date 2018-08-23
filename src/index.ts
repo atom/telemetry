@@ -1,9 +1,13 @@
-import { getGUID } from "./uuid";
+import { uuid } from "./uuid";
 import StatsDatabase from "./database";
+import { IStorage, LocalStorage } from "./storage";
+import { IMetrics } from "./interfaces";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
 const baseUsageApi = "https://central.github.com/api/usage/";
+
+export const StatsGUIDKey = "stats-guid";
 
 export const LastDailyStatsReportKey = "last-daily-stats-report";
 
@@ -22,45 +26,12 @@ export const DailyStatsReportIntervalInMs = hours * 24;
 /** How often (in milliseconds) we check to see if it's time to report stats. */
 export const ReportingLoopIntervalInMs = hours * 4;
 
-export interface IDimensions {
-  /** The app version. */
-  readonly appVersion: string;
-
-  /** the platform */
-  readonly platform: string;
-
-  /** The install ID. */
-  readonly guid: string;
-
-  /** The date the metrics were sent, in ISO-8601 format */
-  readonly date: string;
-
-  readonly eventType: "usage";
-
-  readonly language: string;
-
-  readonly gitHubUser: string | null;
-}
-
-export interface IMetrics {
-  dimensions: IDimensions;
-  // metrics names are defined by the client and thus aren't knowable
-  // at compile time here.
-  measures: object;
-
-  // array of custom events that can be defined by the client
-  customEvents: object[];
-
-  // array of timing events
-  timings: object[];
-}
-
 /** The goal is for this package to be app-agnostic so we can add
  * other editors in the future.
  */
 export enum AppName {
   Atom = "atom",
-  VSCode = "vscode"
+  VSCode = "vscode",
 }
 
 /** helper for getting the date, which we pass in so that we can mock
@@ -69,7 +40,6 @@ export enum AppName {
 const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
-
   private timer: NodeJS.Timer;
 
   /** Has the user opted out of stats reporting? */
@@ -99,25 +69,31 @@ export class StatsStore {
    */
   private getAccessToken: () => string;
 
-  private gitHubUser: string | null;
+  private gitHubUser: string | undefined;
 
-  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken = () => "") {
+  private guid: string;
+
+  public constructor(
+    appName: AppName,
+    version: string,
+    isDevMode: boolean,
+    getAccessToken = () => "",
+    private storage: IStorage = new LocalStorage()
+  ) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
-    const optOutValue = localStorage.getItem(StatsOptOutKey);
-
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
-    this.gitHubUser = null;
-
+    this.guid = this.getGUID();
     this.timer = this.getTimer(ReportingLoopIntervalInMs);
 
+    const optOutValue = storage.getItem(StatsOptOutKey);
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
-      if (!localStorage.getItem(HasSentOptInPingKey)) {
+      if (!storage.getItem(HasSentOptInPingKey)) {
         this.sendOptInStatusPing(!this.optOut);
       }
     } else {
@@ -135,7 +111,7 @@ export class StatsStore {
 
     this.optOut = optOut;
 
-    localStorage.setItem(StatsOptOutKey, optOut ? "1" : "0");
+    this.storage.setItem(StatsOptOutKey, optOut ? "1" : "0");
 
     if (changed) {
       await this.sendOptInStatusPing(!optOut);
@@ -153,7 +129,7 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
-        await localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
+        await this.storage.setItem(LastDailyStatsReportKey, Date.now().toString());
         await this.database.clearData();
         console.log("stats successfully reported");
       }
@@ -182,7 +158,7 @@ export class StatsStore {
       if (response.status !== 200) {
         throw new Error(`Error sending opt in ping: ${response.status}`);
       }
-      localStorage.setItem(HasSentOptInPingKey, "1");
+      this.storage.setItem(HasSentOptInPingKey, "1");
 
       console.log(`Opt ${direction} reported.`);
     } catch (err) {
@@ -201,7 +177,7 @@ export class StatsStore {
       dimensions: {
         appVersion: this.version,
         platform: process.platform,
-        guid: getGUID(),
+        guid: this.guid,
         eventType: "usage",
         date: getDate(),
         language: process.env.LANG || "",
@@ -248,7 +224,7 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async post(body: object): Promise<Response> {
-    const requestHeaders: {[name: string]: string} = { "Content-Type": "application/json" };
+    const requestHeaders: { [name: string]: string } = { "Content-Type": "application/json" };
     const token = this.getAccessToken();
     if (token) {
       requestHeaders.Authorization = `token ${token}`;
@@ -273,8 +249,7 @@ export class StatsStore {
    * Public for testing purposes only.
    */
   public hasReportingIntervalElapsed(): boolean {
-
-    const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
+    const lastDateString = this.storage.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
     if (lastDateString && lastDateString.length > 0) {
       lastDate = parseInt(lastDateString, 10);
@@ -285,7 +260,7 @@ export class StatsStore {
     }
 
     const now = Date.now();
-    return (now - lastDate) > DailyStatsReportIntervalInMs;
+    return now - lastDate > DailyStatsReportIntervalInMs;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
@@ -304,5 +279,14 @@ export class StatsStore {
       timer.unref();
     }
     return timer;
+  }
+
+  private getGUID(): string {
+    let guid = this.storage.getItem(StatsGUIDKey);
+    if (!guid) {
+      guid = uuid();
+      this.storage.setItem(StatsGUIDKey, guid);
+    }
+    return guid;
   }
 }
