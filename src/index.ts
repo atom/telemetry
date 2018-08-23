@@ -22,7 +22,7 @@ export const DailyStatsReportIntervalInMs = hours * 24;
 /** How often (in milliseconds) we check to see if it's time to report stats. */
 export const ReportingLoopIntervalInMs = hours * 4;
 
-interface IDimensions {
+export interface IDimensions {
   /** The app version. */
   readonly appVersion: string;
 
