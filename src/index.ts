@@ -6,9 +6,13 @@ import * as https from 'https';
 import { IncomingMessage, RequestOptions } from "http";
 
 // if you're running a local instance of central, use
-// "http://localhost:4000/api/usage/" instead.
+// const USAGE_HOST = 'localhost';
+// const USAGE_PROTOCOL = 'http:'
+// const USAGE_PORT = '4000'
 const USAGE_HOST = 'central.github.com';
-const USAGE_PROTOCOL = 'https'
+const USAGE_PROTOCOL = 'https:'
+const USAGE_PORT: string | undefined = undefined;
+
 const USAGE_PATH = 'api/usage/';
 
 export const StatsGUIDKey = "stats-guid";
@@ -262,6 +266,9 @@ export class StatsStore {
       path: this.usagePath,
       headers: requestHeaders
     };
+    if (USAGE_PORT) {
+      options.port = USAGE_PORT;
+    }
 
     return this.fetch(options, JSON.stringify(body));
   }
