@@ -6,7 +6,18 @@ interface ICounter {
   count: number;
 }
 
-export default class StatsDatabase {
+export interface IStatsDatabase {
+  close(): void;
+  incrementCounter(counterName: string): void;
+  clearData(): void;
+  getCounters(): Promise<ICounter[]>;
+  addCustomEvent(eventType: string, customEvent: any): void;
+  addTiming(eventType: string, durationInMilliseconds: number, metadata: object): void;
+  getCustomEvents(): Promise<object[]>;
+  getTimings(): Promise<object[]>;
+}
+
+export default class StatsDatabase implements IStatsDatabase {
   private db: loki;
   /**
    * Counters which can be incremented.
@@ -100,10 +111,10 @@ export default class StatsDatabase {
    * callers shouldn't care about.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
-  public async getCounters(): Promise<{ [name: string]: number }> {
-    const counters: { [name: string]: number } = {};
+  public async getCounters(): Promise<ICounter[]> {
+    const counters: ICounter[] = [];
     this.counters.find().forEach(counter => {
-      counters[counter.name] = counter.count;
+      counters.push({ name: counter.name, count: counter.count });
     });
     return counters;
   }

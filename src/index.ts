@@ -1,5 +1,5 @@
 import { uuid } from "./uuid";
-import StatsDatabase from "./database";
+import StatsDatabase, { IStatsDatabase } from "./database";
 import { LocalStorage } from "./storage";
 import { IStorage } from "./interfaces";
 import * as https from 'https';
@@ -101,9 +101,6 @@ export class StatsStore {
    */
   private isDevMode: boolean;
 
-  /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database = new StatsDatabase(getISODate);
-
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
    * because the token might expire.
@@ -119,7 +116,8 @@ export class StatsStore {
     version: string,
     isDevMode: boolean,
     getAccessToken = () => "",
-    private storage: IStorage = new LocalStorage()
+    private storage: IStorage = new LocalStorage(),
+    private database: IStatsDatabase = new StatsDatabase(getISODate)
   ) {
     this.version = version;
     this.usagePath = USAGE_PATH + appName;

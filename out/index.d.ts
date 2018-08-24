@@ -39,6 +39,22 @@ declare module "telemetry-github" {
     timings: object[];
   }
 
+  interface ICounter {
+    name: string;
+    count: number;
+  }
+
+  export interface IStatsDatabase {
+    close(): void;
+    incrementCounter(counterName: string): void;
+    clearData(): void;
+    getCounters(): Promise<ICounter[]>;
+    addCustomEvent(eventType: string, customEvent: any): void;
+    addTiming(eventType: string, durationInMilliseconds: number, metadata: object): void;
+    getCustomEvents(): Promise<object[]>;
+    getTimings(): Promise<object[]>;
+  }
+
   export enum AppName {
     Atom = "atom",
     VSCode = "vscode",
