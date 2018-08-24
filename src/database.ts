@@ -1,6 +1,10 @@
 import * as loki from "lokijs";
-import { ICounter } from "./interfaces";
 import { MultipleCounterError } from "./errors";
+
+interface ICounter {
+  name: string;
+  count: number;
+}
 
 export default class StatsDatabase {
   /**

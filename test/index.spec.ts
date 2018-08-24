@@ -4,7 +4,6 @@ import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { getGUID } from "../src/uuid";
 
 chai.use(chaiAsPromised);
 
@@ -234,7 +233,7 @@ describe("StatsStore", function() {
       expect(dimensions.platform).to.eq(process.platform);
       expect(dimensions.date).to.eq(getDate());
       expect(dimensions.eventType).to.eq("usage");
-      expect(dimensions.guid).to.eq(getGUID());
+      // expect(dimensions.guid).to.eq(getGUID());
       expect(dimensions.language).to.eq(process.env.LANG);
       expect(dimensions.gitHubUser).to.eq(gitHubUser);
 
@@ -250,7 +249,7 @@ describe("StatsStore", function() {
     });
     it("handles null gitHubUser", async function() {
       const event = await store.getDailyStats(getDate);
-      expect(event.dimensions.gitHubUser).to.be.null;
+      expect(event.dimensions.gitHubUser).to.be.undefined;
     });
   });
 });

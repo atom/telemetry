@@ -1,7 +1,7 @@
 import { uuid } from "./uuid";
 import StatsDatabase from "./database";
-import { IStorage, LocalStorage } from "./storage";
-import { IMetrics } from "./interfaces";
+import { LocalStorage } from "./storage";
+import { IStorage } from "./interfaces";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
@@ -38,6 +38,39 @@ export enum AppName {
  * in unit tests.
  */
 const getISODate = () => new Date(Date.now()).toISOString();
+
+export interface IDimensions {
+  /** The app version. */
+  readonly appVersion: string;
+
+  /** the platform */
+  readonly platform: string;
+
+  /** The install ID. */
+  readonly guid: string;
+
+  /** The date the metrics were sent, in ISO-8601 format */
+  readonly date: string;
+
+  readonly eventType: "usage";
+
+  readonly language: string;
+
+  readonly gitHubUser: string | undefined;
+}
+
+export interface IMetrics {
+  dimensions: IDimensions;
+  // metrics names are defined by the client and thus aren't knowable
+  // at compile time here.
+  measures: object;
+
+  // array of custom events that can be defined by the client
+  customEvents: object[];
+
+  // array of timing events
+  timings: object[];
+}
 
 export class StatsStore {
   private timer: NodeJS.Timer;

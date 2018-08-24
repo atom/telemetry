@@ -1,7 +1,4 @@
-export interface IStorage {
-  getItem(key: string): string | undefined;
-  setItem(key: string, value: string): void;
-}
+import { IStorage } from "./interfaces";
 
 export class LocalStorage implements IStorage {
   public getItem(key: string): string | undefined {

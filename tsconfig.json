@@ -11,8 +11,7 @@
     "sourceMap": true,
     "strict": true,
     "strictNullChecks": true,
-    "outDir": "./out/",
-    "declaration": true,
+    "outDir": "./out/"
   },
   "include": ["./src/**/*"],
   "exclude": [
