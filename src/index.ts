@@ -3,11 +3,13 @@ import StatsDatabase from "./database";
 import { LocalStorage } from "./storage";
 import { IStorage } from "./interfaces";
 import * as https from 'https';
-import { IncomingMessage } from "http";
+import { IncomingMessage, RequestOptions } from "http";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
-const baseUsageApi = "https://central.github.com/api/usage/";
+const USAGE_HOST = 'central.github.com';
+const USAGE_PROTOCOL = 'https'
+const USAGE_PATH = 'api/usage/';
 
 export const StatsGUIDKey = "stats-guid";
 
@@ -81,7 +83,7 @@ export class StatsStore {
   private optOut: boolean;
 
   /** api for calling central with our stats */
-  private appUrl: string;
+  private usagePath: string;
 
   /** which version are we running, dawg */
   private version: string;
@@ -116,7 +118,7 @@ export class StatsStore {
     private storage: IStorage = new LocalStorage()
   ) {
     this.version = version;
-    this.appUrl = baseUsageApi + appName;
+    this.usagePath = USAGE_PATH + appName;
     this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
     this.guid = this.getGUID();
@@ -253,23 +255,31 @@ export class StatsStore {
     if (token) {
       requestHeaders.Authorization = `token ${token}`;
     }
-    const options: object = {
+    const options: RequestOptions = {
+      hostname: USAGE_HOST,
+      protocol: USAGE_PROTOCOL,
       method: "POST",
-      headers: requestHeaders,
-      body: JSON.stringify(body),
+      path: this.usagePath,
+      headers: requestHeaders
     };
 
-    return this.fetch(this.appUrl, options);
+    return this.fetch(options, JSON.stringify(body));
   }
 
   /** Exists to enable us to mock fetch in tests
    * This is public for testing purposes only.
    */
-  public async fetch(url: string, options: object): Promise<IncomingMessage> {
+  public async fetch(options: RequestOptions, body: string): Promise<IncomingMessage> {
     return new Promise<IncomingMessage>((resolve, reject) => {
-      const post = https.request(options, postResponse => {
-        resolve(postResponse);
-      });
+      try {
+        const post = https.request(options, postResponse => {
+          resolve(postResponse);
+        });
+        post.write(body);
+        post.end();
+      } catch(e) {
+        reject(e);
+      }
     });
   }
 
