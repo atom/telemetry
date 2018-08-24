@@ -1,7 +1,7 @@
 import { uuid } from "./uuid";
 import StatsDatabase, { IStatsDatabase } from "./database";
 import { LocalStorage } from "./storage";
-import { IStorage } from "./interfaces";
+import { ISettings } from "./interfaces";
 import * as https from 'https';
 import { IncomingMessage, RequestOptions } from "http";
 
@@ -116,7 +116,7 @@ export class StatsStore {
     version: string,
     isDevMode: boolean,
     getAccessToken = () => "",
-    private storage: IStorage = new LocalStorage(),
+    private settings: ISettings = new LocalStorage(),
     private database: IStatsDatabase = new StatsDatabase(getISODate)
   ) {
     this.version = version;
@@ -126,13 +126,13 @@ export class StatsStore {
     this.guid = this.getGUID();
     this.timer = this.getTimer(ReportingLoopIntervalInMs);
 
-    const optOutValue = storage.getItem(StatsOptOutKey);
+    const optOutValue = settings.getItem(StatsOptOutKey);
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
-      if (!storage.getItem(HasSentOptInPingKey)) {
+      if (!settings.getItem(HasSentOptInPingKey)) {
         this.sendOptInStatusPing(!this.optOut);
       }
     } else {
@@ -154,7 +154,7 @@ export class StatsStore {
 
     this.optOut = optOut;
 
-    this.storage.setItem(StatsOptOutKey, optOut ? "1" : "0");
+    this.settings.setItem(StatsOptOutKey, optOut ? "1" : "0");
 
     if (changed) {
       await this.sendOptInStatusPing(!optOut);
@@ -171,7 +171,7 @@ export class StatsStore {
     if (response.statusCode !== 200) {
       throw new Error(`Stats reporting failure: ${response.statusCode})`);
     } else {
-      await this.storage.setItem(LastDailyStatsReportKey, Date.now().toString());
+      await this.settings.setItem(LastDailyStatsReportKey, Date.now().toString());
       await this.database.clearData();
       console.log("stats successfully reported");
     }
@@ -195,7 +195,7 @@ export class StatsStore {
     if (response.statusCode !== 200) {
       throw new Error(`Error sending opt in ping: ${response.statusCode}`);
     }
-    this.storage.setItem(HasSentOptInPingKey, "1");
+    this.settings.setItem(HasSentOptInPingKey, "1");
 
     console.log(`Opt ${direction} reported.`);
   }
@@ -296,7 +296,7 @@ export class StatsStore {
    * Public for testing purposes only.
    */
   public hasReportingIntervalElapsed(): boolean {
-    const lastDateString = this.storage.getItem(LastDailyStatsReportKey);
+    const lastDateString = this.settings.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
     if (lastDateString && lastDateString.length > 0) {
       lastDate = parseInt(lastDateString, 10);
@@ -329,10 +329,10 @@ export class StatsStore {
   }
 
   private getGUID(): string {
-    let guid = this.storage.getItem(StatsGUIDKey);
+    let guid = this.settings.getItem(StatsGUIDKey);
     if (!guid) {
       guid = uuid();
-      this.storage.setItem(StatsGUIDKey, guid);
+      this.settings.setItem(StatsGUIDKey, guid);
     }
     return guid;
   }

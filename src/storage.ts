@@ -1,6 +1,6 @@
-import { IStorage } from "./interfaces";
+import { ISettings } from "./interfaces";
 
-export class LocalStorage implements IStorage {
+export class LocalStorage implements ISettings {
   public getItem(key: string): string | undefined {
     return localStorage.getItem(key) || undefined;
   }
