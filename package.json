@@ -1,12 +1,17 @@
 {
   "name": "telemetry-github",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "description": "telemetry for GitHub client apps",
   "repository": {
     "url": "https://github.com/atom/telemetry"
   },
   "main": "./out/index.js",
   "types": "./index.d.ts",
+  "files": [
+    "out",
+    "src",
+    "index.d.ts"
+  ],
   "scripts": {
     "mocha": "./node_modules/.bin/mocha --require mock-local-storage --compilers ts:ts-node/register ./test/*.spec.ts",
     "test": "npm run mocha && npm run lint",
