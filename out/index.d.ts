@@ -50,6 +50,9 @@ declare module "telemetry-github" {
       getAccessToken?: () => string,
       storage?: IStorage
     );
+
+    shutdown();
+
     setGitHubUser(gitHubUser: string): void;
     /** Set whether the user has opted out of stats reporting. */
     setOptOut(optOut: boolean): Promise<void>;

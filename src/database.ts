@@ -7,6 +7,7 @@ interface ICounter {
 }
 
 export default class StatsDatabase {
+  private db: loki;
   /**
    * Counters which can be incremented.
    * Most commonly used for usage stats that don't need
@@ -30,11 +31,19 @@ export default class StatsDatabase {
   private getDate: () => string;
 
   public constructor(getISODate: () => string) {
-    const db = new loki("stats-database");
-    this.counters = db.addCollection("counters");
-    this.customEvents = db.addCollection("customEvents");
-    this.timings = db.addCollection("timing");
+    this.db = new loki("stats-database", {
+      autosave: true,
+      autoload: true,
+      autosaveInterval: 10000, // 10 seconds
+    });
+    this.counters = this.db.addCollection("counters");
+    this.customEvents = this.db.addCollection("customEvents");
+    this.timings = this.db.addCollection("timing");
     this.getDate = () => getISODate();
+  }
+
+  public async close() {
+    this.db.close();
   }
 
   public async addCustomEvent(eventType: string, customEvent: any) {

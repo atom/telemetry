@@ -142,6 +142,10 @@ export class StatsStore {
     }
   }
 
+  async shutdown() {
+    this.database.close();
+  }
+
   public setGitHubUser(gitHubUser: string) {
     this.gitHubUser = gitHubUser;
   }
