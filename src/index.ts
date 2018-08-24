@@ -2,6 +2,8 @@ import { uuid } from "./uuid";
 import StatsDatabase from "./database";
 import { LocalStorage } from "./storage";
 import { IStorage } from "./interfaces";
+import * as https from 'https';
+import { IncomingMessage } from "http";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
@@ -157,19 +159,13 @@ export class StatsStore {
     }
     const stats = await this.getDailyStats(getDate);
 
-    try {
-      const response = await this.post(stats);
-      if (response.status !== 200) {
-        throw new Error(`Stats reporting failure: ${response.status})`);
-      } else {
-        await this.storage.setItem(LastDailyStatsReportKey, Date.now().toString());
-        await this.database.clearData();
-        console.log("stats successfully reported");
-      }
-    } catch (err) {
-      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
-      // so we have some kind of visibility into how often things are failing.
-      console.log(err);
+    const response = await this.post(stats);
+    if (response.statusCode !== 200) {
+      throw new Error(`Stats reporting failure: ${response.statusCode})`);
+    } else {
+      await this.storage.setItem(LastDailyStatsReportKey, Date.now().toString());
+      await this.database.clearData();
+      console.log("stats successfully reported");
     }
   }
 
@@ -181,24 +177,19 @@ export class StatsStore {
       return;
     }
     const direction = optIn ? "in" : "out";
-    try {
-      const response = await this.post({
-        eventType: "ping",
-        dimensions: {
-          optIn,
-        },
-      });
-      if (response.status !== 200) {
-        throw new Error(`Error sending opt in ping: ${response.status}`);
-      }
-      this.storage.setItem(HasSentOptInPingKey, "1");
 
-      console.log(`Opt ${direction} reported.`);
-    } catch (err) {
-      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
-      // so we have some kind of visibility into how often things are failing.
-      console.log(`Error reporting opt ${direction}`, err);
+    const response = await this.post({
+      eventType: "ping",
+      dimensions: {
+        optIn,
+      },
+    });
+    if (response.statusCode !== 200) {
+      throw new Error(`Error sending opt in ping: ${response.statusCode}`);
     }
+    this.storage.setItem(HasSentOptInPingKey, "1");
+
+    console.log(`Opt ${direction} reported.`);
   }
 
   // public for testing purposes only
@@ -256,7 +247,7 @@ export class StatsStore {
   /** Post some data to our stats endpoint.
    * This is public for testing purposes only.
    */
-  public async post(body: object): Promise<Response> {
+  public async post(body: object): Promise<IncomingMessage> {
     const requestHeaders: { [name: string]: string } = { "Content-Type": "application/json" };
     const token = this.getAccessToken();
     if (token) {
@@ -274,8 +265,12 @@ export class StatsStore {
   /** Exists to enable us to mock fetch in tests
    * This is public for testing purposes only.
    */
-  public async fetch(url: string, options: object): Promise<Response> {
-    return fetch(url, options);
+  public async fetch(url: string, options: object): Promise<IncomingMessage> {
+    return new Promise<IncomingMessage>((resolve, reject) => {
+      const post = https.request(options, postResponse => {
+        resolve(postResponse);
+      });
+    });
   }
 
   /** Should the app report its daily stats?
