@@ -1,3 +1,5 @@
+import { IncomingMessage } from "http";
+
 declare module "telemetry-github" {
   export interface IStorage {
     getItem(key: string): string | undefined;
@@ -71,11 +73,11 @@ declare module "telemetry-github" {
     /** Post some data to our stats endpoint.
      * This is public for testing purposes only.
      */
-    post(body: object): Promise<Response>;
+    post(body: object): Promise<IncomingMessage>;
     /** Exists to enable us to mock fetch in tests
      * This is public for testing purposes only.
      */
-    fetch(url: string, options: object): Promise<Response>;
+    fetch(url: string, options: object): Promise<IncomingMessage>;
     /** Should the app report its daily stats?
      * Public for testing purposes only.
      */
