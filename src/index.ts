@@ -32,13 +32,14 @@ export const StatsOptOutKey = "stats-opt-out";
 export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
 /** milliseconds in an hour (for readability, dawg) */
-const hours = 60 * 60 * 1000;
+const minutes = 60 * 1000;
+const hours = 60 * minutes;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopIntervalInMs = hours * 4;
+export const ReportingLoopIntervalInMs = minutes * 5; // every 5 minutes
 
 /** helper for getting the date, which we pass in so that we can mock
  * in unit tests.
