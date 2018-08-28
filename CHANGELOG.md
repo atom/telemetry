@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.35"></a>
+## [0.0.35](https://github.com/atom/telemetry/compare/0.0.34...0.0.35) (2018-08-28)
+
+
+### Bug Fixes
+
+* testing the changelog... ([60ba8be](https://github.com/atom/telemetry/commit/60ba8be))
+
+
+
 <a name="0.0.34"></a>
 ## [0.0.34](https://github.com/atom/telemetry/compare/0.0.33...0.0.34) (2018-08-28)
 
