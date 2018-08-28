@@ -1,9 +1,16 @@
+import { IStatsDatabase, ISettings, IMetrics } from 'telemetry-github'
 import { uuid } from "./uuid";
-import StatsDatabase, { IStatsDatabase } from "./database";
 import { LocalStorage } from "./storage";
-import { ISettings } from "./interfaces";
-import * as https from 'https';
+import StatsDatabase from "./database";
+
 import { IncomingMessage, RequestOptions } from "http";
+import * as https from 'https';
+import { ReportError, PingError } from './errors';
+
+export const enum AppName {
+  Atom = "atom",
+  VSCode = "vscode",
+}
 
 // if you're running a local instance of central, use
 // const USAGE_HOST = 'localhost';
@@ -34,57 +41,16 @@ export const DailyStatsReportIntervalInMs = hours * 24;
 /** How often (in milliseconds) we check to see if it's time to report stats. */
 export const ReportingLoopIntervalInMs = hours * 4;
 
-/** The goal is for this package to be app-agnostic so we can add
- * other editors in the future.
- */
-export enum AppName {
-  Atom = "atom",
-  VSCode = "vscode",
-}
-
 /** helper for getting the date, which we pass in so that we can mock
  * in unit tests.
  */
 const getISODate = () => new Date(Date.now()).toISOString();
 
-export interface IDimensions {
-  /** The app version. */
-  readonly appVersion: string;
-
-  /** the platform */
-  readonly platform: string;
-
-  /** The install ID. */
-  readonly guid: string;
-
-  /** The date the metrics were sent, in ISO-8601 format */
-  readonly date: string;
-
-  readonly eventType: "usage";
-
-  readonly language: string;
-
-  readonly gitHubUser: string | undefined;
-}
-
-export interface IMetrics {
-  dimensions: IDimensions;
-  // metrics names are defined by the client and thus aren't knowable
-  // at compile time here.
-  measures: object;
-
-  // array of custom events that can be defined by the client
-  customEvents: object[];
-
-  // array of timing events
-  timings: object[];
-}
-
 export class StatsStore {
-  private timer: NodeJS.Timer;
+  private timer: NodeJS.Timer | undefined;
 
   /** Has the user opted out of stats reporting? */
-  private optOut: boolean;
+  private optOut: boolean = false;
 
   /** api for calling central with our stats */
   private usagePath: string;
@@ -92,14 +58,9 @@ export class StatsStore {
   /** which version are we running, dawg */
   private version: string;
 
-  /** is electron app running in development mode?
-   * There isn't currently a consistent way of programmatically determining if an app
-   * is in dev mode that works in Desktop, Atom, and vscode.
-   * Todo: use Electron's new api to determine whether we are in dev mode, once
-   * all the clients using `telemetry` are on. Electron versions that support this api.
-   * https://github.com/electron/electron/issues/7714
-   */
-  private isDevMode: boolean;
+  /** is app running in development mode? */
+  private isDevMode: boolean = false;
+  private trackInDevMode: boolean = false;
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -109,67 +70,122 @@ export class StatsStore {
 
   private gitHubUser: string | undefined;
 
-  private guid: string;
+  private guid: string | undefined;
+
+  private get isEnabled() : boolean {
+    return !this.optOut && (!this.isDevMode || this.trackInDevMode);
+  }
 
   public constructor(
     appName: AppName,
     version: string,
-    isDevMode: boolean,
     getAccessToken = () => "",
     private settings: ISettings = new LocalStorage(),
     private database: IStatsDatabase = new StatsDatabase(getISODate)
   ) {
     this.version = version;
     this.usagePath = USAGE_PATH + appName;
-    this.isDevMode = isDevMode;
     this.getAccessToken = getAccessToken;
-    this.guid = this.getGUID();
     this.timer = this.getTimer(ReportingLoopIntervalInMs);
+  }
 
-    const optOutValue = settings.getItem(StatsOptOutKey);
+  private async initialize(): Promise<void> {
+    if (this.guid) return;
+    this.guid = await this.getGUID();
+
+    const optOutValue = await this.settings.getItem(StatsOptOutKey);
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
 
       // If the user has set an opt out value but we haven't sent the ping yet,
       // give it a shot now.
-      if (!settings.getItem(HasSentOptInPingKey)) {
-        this.sendOptInStatusPing(!this.optOut);
+      if (!(await this.settings.getItem(HasSentOptInPingKey))) {
+        if (!this.isDevMode || this.trackInDevMode) {
+          await this.sendOptInStatusPing(!this.optOut);
+        }
       }
     } else {
       this.optOut = false;
     }
   }
 
-  async shutdown() {
+  public async shutdown(): Promise<void> {
     this.database.close();
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = undefined;
+    }
   }
 
   public setGitHubUser(gitHubUser: string) {
     this.gitHubUser = gitHubUser;
   }
 
+  public setDevMode(isDevMode: boolean): void {
+    this.isDevMode = isDevMode;
+  }
+
+  public setTrackInDevMode(track: boolean): void {
+    this.trackInDevMode = track;
+  }
+
   /** Set whether the user has opted out of stats reporting. */
   public async setOptOut(optOut: boolean): Promise<void> {
+    await this.initialize();
+
     const changed = this.optOut !== optOut;
 
     this.optOut = optOut;
 
-    this.settings.setItem(StatsOptOutKey, optOut ? "1" : "0");
+    await this.settings.setItem(StatsOptOutKey, optOut ? "1" : "0");
 
-    if (changed) {
+    if (changed && (!this.isDevMode || this.trackInDevMode)) {
       await this.sendOptInStatusPing(!optOut);
     }
   }
 
+
+  public async addCustomEvent(eventType: string, event: object) {
+    await this.initialize();
+
+    if (!this.isEnabled) return;
+
+    await this.database.addCustomEvent(eventType, event);
+  }
+
+  /**
+   * Add timing data to the stats store, to be sent with the daily metrics requests.
+   */
+  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
+    await this.initialize();
+
+    if (!this.isEnabled) return;
+
+    await this.database.addTiming(eventType, durationInMilliseconds, metadata);
+  }
+
+  /**
+   * Increment a counter.  This is used to track usage statistics.
+   */
+  public async incrementCounter(counterName: string) {
+    await this.initialize();
+
+    if (!this.isEnabled) return;
+
+    await this.database.incrementCounter(counterName);
+  }
+
   public async reportStats(getDate: () => string) {
-    if (this.optOut || this.isDevMode) {
-      return;
-    }
+    await this.initialize();
+
+    if (!this.isEnabled) return;
+
     const stats = await this.getDailyStats(getDate);
 
     const response = await this.post(stats);
+
     if (response.statusCode !== 200) {
-      throw new Error(`Stats reporting failure: ${response.statusCode})`);
+      throw new ReportError(response.statusCode);
     } else {
       await this.settings.setItem(LastDailyStatsReportKey, Date.now().toString());
       await this.database.clearData();
@@ -177,13 +193,14 @@ export class StatsStore {
     }
   }
 
+  // ====== Internal Helpers =====
+
   /* send a ping to indicate that the user has changed their opt-in preferences.
   * public for testing purposes only.
   */
   public async sendOptInStatusPing(optIn: boolean): Promise<void> {
-    if (this.isDevMode) {
-      return;
-    }
+    await this.initialize();
+
     const direction = optIn ? "in" : "out";
 
     const response = await this.post({
@@ -192,8 +209,9 @@ export class StatsStore {
         optIn,
       },
     });
+
     if (response.statusCode !== 200) {
-      throw new Error(`Error sending opt in ping: ${response.statusCode}`);
+      throw new PingError(response.statusCode);
     }
     this.settings.setItem(HasSentOptInPingKey, "1");
 
@@ -202,6 +220,8 @@ export class StatsStore {
 
   // public for testing purposes only
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
+    await this.initialize();
+
     return {
       measures: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),
@@ -209,47 +229,13 @@ export class StatsStore {
       dimensions: {
         appVersion: this.version,
         platform: process.platform,
-        guid: this.guid,
+        guid: this.guid!,
         eventType: "usage",
         date: getDate(),
         language: process.env.LANG || "",
         gitHubUser: this.gitHubUser,
       },
     };
-  }
-
-  public async addCustomEvent(eventType: string, event: object) {
-    await this.database.addCustomEvent(eventType, event);
-  }
-
-  /**
-   * Add timing data to the stats store, to be sent with the daily metrics requests.
-   */
-  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
-    // don't increment in dev mode because localStorage
-    // is shared across dev and non dev windows and there's
-    // no way to keep dev and non-dev metrics separate.
-    // don't increment if the user has opted out, because
-    // we want to respect user privacy.
-    if (this.isDevMode || this.optOut) {
-      return;
-    }
-    await this.database.addTiming(eventType, durationInMilliseconds, metadata);
-  }
-
-  /**
-   * Increment a counter.  This is used to track usage statistics.
-   */
-  public async incrementCounter(counterName: string) {
-    // don't increment in dev mode because localStorage
-    // is shared across dev and non dev windows and there's
-    // no way to keep dev and non-dev metrics separate.
-    // don't increment if the user has opted out, because
-    // we want to respect user privacy.
-    if (this.isDevMode || this.optOut) {
-      return;
-    }
-    await this.database.incrementCounter(counterName);
   }
 
   /** Post some data to our stats endpoint.
@@ -295,8 +281,8 @@ export class StatsStore {
   /** Should the app report its daily stats?
    * Public for testing purposes only.
    */
-  public hasReportingIntervalElapsed(): boolean {
-    const lastDateString = this.settings.getItem(LastDailyStatsReportKey);
+  public async hasReportingIntervalElapsed(): Promise<boolean> {
+    const lastDateString = await this.settings.getItem(LastDailyStatsReportKey);
     let lastDate = 0;
     if (lastDateString && lastDateString.length > 0) {
       lastDate = parseInt(lastDateString, 10);
@@ -312,24 +298,21 @@ export class StatsStore {
 
   /** Set a timer so we can report the stats when the time comes. */
   private getTimer(loopInterval: number): NodeJS.Timer {
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
-    const timer = setInterval(() => {
+    this.timer = setInterval(() => {
       if (this.hasReportingIntervalElapsed()) {
         this.reportStats(getISODate);
       }
     }, loopInterval);
-
-    if (timer.unref !== undefined) {
-      // make sure we don't block node from exiting in tests
-      // https://stackoverflow.com/questions/48172363/mocha-test-suite-never-ends-when-setinterval-running
-      timer.unref();
-    }
-    return timer;
+    return this.timer;
   }
 
-  private getGUID(): string {
-    let guid = this.settings.getItem(StatsGUIDKey);
+  private async getGUID(): Promise<string> {
+    let guid = await this.settings.getItem(StatsGUIDKey);
     if (!guid) {
       guid = uuid();
       this.settings.setItem(StatsGUIDKey, guid);

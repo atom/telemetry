@@ -1,9 +1,12 @@
 import { expect, assert } from "chai";
 import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
-  LastDailyStatsReportKey, IMetrics, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
+  LastDailyStatsReportKey, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { IMetrics } from "telemetry-github";
+import { reporters } from "mocha";
+import { ReportError, PingError } from "../src/errors";
 
 chai.use(chaiAsPromised);
 
@@ -13,9 +16,17 @@ const getDate = () => {
 
 const ACCESS_TOKEN = "SUPER_AWESOME_ACCESS_TOKEN";
 
-const getAccessToken = () => {
+const getFilledAccessToken = () => {
   return ACCESS_TOKEN;
 };
+
+const getEmptyAccessToken = () => {
+  return "";
+};
+
+const postResponse_Success = { status: 200, statusCode: 200 };
+const postResponse_Error = { status: 500, statusCode: 500 };
+const postResponse_DefaultStub = { status: 1000, statusCode: 1000 };
 
 describe("StatsStore", function() {
   const version = "1.2.3";
@@ -23,19 +34,27 @@ describe("StatsStore", function() {
   let postStub: sinon.SinonStub;
   let shouldReportStub: sinon.SinonStub;
   const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
+  let accessTokenFunc: () => string = () => "";
+  let getAccessToken: () => string = () => accessTokenFunc();
 
   beforeEach(function() {
-    store = new StatsStore(AppName.Atom, version, false, getAccessToken);
+    accessTokenFunc = getFilledAccessToken;
+    store = new StatsStore(AppName.Atom, version, getAccessToken);
     postStub = sinon.stub(store, "post");
+    postStub.resolves(postResponse_DefaultStub);
   });
-  afterEach(function() {
+  afterEach(async function() {
+    try {
+      (<any>store.post).restore();
+    } catch {}
     localStorage.clear();
+    await store.shutdown();
   });
   describe("constructor", function() {
     let clock: sinon.SinonFakeTimers;
     beforeEach(function() {
       clock = sinon.useFakeTimers();
-      postStub.resolves({ status: 200 });
+      postStub.resolves(postResponse_Success);
     });
     afterEach(function() {
       clock.restore();
@@ -48,7 +67,7 @@ describe("StatsStore", function() {
     });
     it("does not report stats when shouldReportDailyStats returns false", function() {
       shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
-      postStub.resolves({ status: 200 });
+      postStub.resolves(postResponse_Success);
       setTimeout(() => {
         sinon.assert.notCalled(postStub);
       }, ReportingLoopIntervalInMs + 100);
@@ -57,35 +76,34 @@ describe("StatsStore", function() {
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
     beforeEach(async function() {
+      postStub.resolves(postResponse_Success);
       await store.incrementCounter("commit");
       fakeEvent = await store.getDailyStats(getDate);
     });
     it("handles success case", async function() {
-      postStub.resolves({ status: 200 });
+      postStub.resolves(postResponse_Success);
       await store.reportStats(getDate);
       sinon.assert.calledWith(postStub, fakeEvent);
 
       // counters should be cleared in success case
       const counters = (await store.getDailyStats(getDate)).measures;
-      assert.deepEqual(counters, {});
+      assert.deepEqual(counters, []);
     });
     it("handles failure case", async function() {
-      postStub.resolves({ status: 500 });
-      await store.reportStats(getDate);
-      sinon.assert.calledWith(postStub, fakeEvent);
+      postStub.resolves(postResponse_Error);
+      expect(store.reportStats(getDate)).to.be.rejectedWith(ReportError);
 
       // counters should not be cleared if we fail to send daily stats
       const counters = (await store.getDailyStats(getDate)).measures;
       assert.deepEqual(counters, fakeEvent.measures);
     });
     it("does not report stats when app is in dev mode", async function() {
-      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
-      postStub = sinon.stub(storeInDevMode, "post").resolves( { status: 200 });
-      await storeInDevMode.reportStats(getDate);
+      store.setDevMode(true);
+      await store.reportStats(getDate);
       sinon.assert.notCalled(postStub);
     });
     it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
-      postStub.resolves({ status: 200 });
+      postStub.resolves(postResponse_Success);
       store.setOptOut(true);
       await store.reportStats(getDate);
       await store.reportStats(getDate);
@@ -97,12 +115,13 @@ describe("StatsStore", function() {
   });
   describe("addTimer", async function() {
     it("does not add timer in dev mode", async function() {
-      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
-      await storeInDevMode.addTiming("load", 100);
-      const stats = await storeInDevMode.getDailyStats(getDate);
+      store.setDevMode(true);
+      await store.addTiming("load", 100);
+      const stats = await store.getDailyStats(getDate);
       assert.deepEqual(stats.timings, []);
     });
     it("does not add timer if user has opted out", async function() {
+      postStub.resolves(postResponse_Success);
       store.setOptOut(true);
       await store.addTiming("load", 100);
       const stats = await store.getDailyStats(getDate);
@@ -117,38 +136,47 @@ describe("StatsStore", function() {
   describe("incrementCounter", async function() {
     const counterName = "commits";
     it("does not increment counter in dev mode", async function() {
-      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
-      await storeInDevMode.incrementCounter(counterName);
-      const stats = await storeInDevMode.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {});
+      store.setDevMode(true);
+      await store.incrementCounter(counterName);
+      const stats = await store.getDailyStats(getDate);
+      assert.deepEqual(stats.measures, []);
     });
     it("does not increment counter if user has opted out", async function() {
+      postStub.resolves(postResponse_Success);
       store.setOptOut(true);
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {});
+      assert.deepEqual(stats.measures, []);
     });
     it("does increment counter if non dev and user has opted in", async function() {
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, {[counterName]: 1});
+      assert.deepEqual(stats.measures, [{ name: 'commits', count: 1 }]);
     });
   });
   describe("post", async function() {
+    let fetchStub: sinon.SinonStub;
+    beforeEach(async function() {
+      fetchStub = sinon.stub(store, "fetch");
+      fetchStub.resolves(postResponse_Success);
+      (<any>store.post).restore();
+    });
+    afterEach(function() {
+      (<any>store.fetch).restore();
+    });
+
     it("sends the auth header if one exists", async function() {
-      store = new StatsStore(AppName.Atom, version, false, getAccessToken);
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
+      accessTokenFunc = getFilledAccessToken;
       await store.reportStats(getDate);
-      assert.deepEqual(fetch.args[0][1].headers, {
+      assert.deepEqual(fetchStub.args[0][0].headers, {
         "Content-Type": "application/json",
         "Authorization": `token ${ACCESS_TOKEN}`,
       });
     });
     it("does not send the auth header if the auth header is falsy", async function() {
-      store = new StatsStore(AppName.Atom, version, false, () => "");
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
+      accessTokenFunc = getEmptyAccessToken;
       await store.reportStats(getDate);
-      assert.deepEqual(fetch.args[0][1].headers, {
+      assert.deepEqual(fetchStub.args[0][0].headers, {
         "Content-Type": "application/json",
       });
     });
@@ -156,12 +184,14 @@ describe("StatsStore", function() {
   describe("setOptOut", async function() {
     it("sets the opt out preferences in local storage", async function() {
       assert.notOk(localStorage.getItem(StatsOptOutKey));
+      postStub.resolves(postResponse_Success);
       await store.setOptOut(true);
       assert.ok(localStorage.getItem(StatsOptOutKey));
     });
     it("does not send ping in dev mode", async function() {
-      const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
-      await storeInDevMode.setOptOut(true);
+      postStub.resolves(postResponse_Success);
+      store.setDevMode(true);
+      await store.setOptOut(true);
       sinon.assert.notCalled(postStub);
     });
     it("sends one status ping when status is changed", async function() {
@@ -178,29 +208,26 @@ describe("StatsStore", function() {
     });
   });
   describe("hasReportingIntervalElapsed", function() {
-    it("returns false if not enough time has elapsed since last report", function() {
+    it("returns false if not enough time has elapsed since last report", async function() {
       localStorage.setItem(LastDailyStatsReportKey, (Date.now()).toString());
-      assert.isFalse(store.hasReportingIntervalElapsed());
+      assert.isFalse(await store.hasReportingIntervalElapsed());
     });
-    it("returns true if enough time has elapsed since last report", function() {
+    it("returns true if enough time has elapsed since last report", async function() {
       localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportIntervalInMs - 1).toString());
-      assert.isTrue(store.hasReportingIntervalElapsed());
+      assert.isTrue(await store.hasReportingIntervalElapsed());
     });
   });
   describe("sendOptInStatusPing", async function() {
     it("handles success", async function() {
-      postStub.resolves({status: 200});
+      postStub.resolves(postResponse_Success);
       await store.sendOptInStatusPing(false);
-
       sinon.assert.calledWith(postStub, pingEvent);
 
       assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), "1");
     });
     it("handles error", async function() {
-      postStub.resolves({ status: 500 });
-      await store.sendOptInStatusPing(false);
-
-      sinon.assert.calledWith(postStub, pingEvent);
+      postStub.resolves(postResponse_Error);
+      expect(store.sendOptInStatusPing(false)).to.be.rejectedWith(PingError);
 
       assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), null);
     });
@@ -233,13 +260,12 @@ describe("StatsStore", function() {
       expect(dimensions.platform).to.eq(process.platform);
       expect(dimensions.date).to.eq(getDate());
       expect(dimensions.eventType).to.eq("usage");
-      // expect(dimensions.guid).to.eq(getGUID());
+      expect(dimensions.guid).to.eq((<any>store).guid);
       expect(dimensions.language).to.eq(process.env.LANG);
       expect(dimensions.gitHubUser).to.eq(gitHubUser);
 
       const counters = event.measures;
-      expect(counters).to.deep.include({ [counter1]: 1});
-      expect(counters).to.deep.include({ [counter2]: 2});
+      assert.deepEqual(counters, [{ name: counter1, count: 1 }, { name: counter2, count: 2 }]);
 
       const customEvents = event.customEvents;
       expect(customEvents.length).to.eq(2);

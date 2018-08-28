@@ -1,7 +1,7 @@
 declare module "telemetry-github" {
   export interface ISettings {
-    getItem(key: string): string | undefined;
-    setItem(key: string, value: string): void;
+    getItem(key: string): Promise<string | undefined>;
+    setItem(key: string, value: string): Promise<void>;
   }
 
   export interface IDimensions {
@@ -37,23 +37,23 @@ declare module "telemetry-github" {
     timings: object[];
   }
 
-  interface ICounter {
+  export interface ICounter {
     name: string;
     count: number;
   }
 
   export interface IStatsDatabase {
-    close(): void;
-    incrementCounter(counterName: string): void;
-    clearData(): void;
+    close(): Promise<void>;
+    incrementCounter(counterName: string): Promise<void>;
+    clearData(): Promise<void>;
     getCounters(): Promise<ICounter[]>;
-    addCustomEvent(eventType: string, customEvent: any): void;
-    addTiming(eventType: string, durationInMilliseconds: number, metadata: object): void;
+    addCustomEvent(eventType: string, customEvent: any): Promise<void>;
+    addTiming(eventType: string, durationInMilliseconds: number, metadata: object): Promise<void>;
     getCustomEvents(): Promise<object[]>;
     getTimings(): Promise<object[]>;
   }
 
-  export enum AppName {
+  export const enum AppName {
     Atom = "atom",
     VSCode = "vscode",
   }
@@ -62,20 +62,31 @@ declare module "telemetry-github" {
     constructor(
       appName: AppName,
       version: string,
-      isDevMode: boolean,
       getAccessToken?: () => string,
       settings?: ISettings,
       database?: IStatsDatabase
     );
 
-    shutdown();
-
+    /** Set the username to send along with the metrics (optional) */
     setGitHubUser(gitHubUser: string): void;
+
+    /** Are we running in development mode? */
+    setDevMode(isDevMode: boolean): void;
+
+    /** Disable storing metrics when in development mode.
+     * The default is false because the default backend is localStorage,
+     * which cannot distinguish between dev and non-dev mode when saving
+     * metrics. If you supply a backend that can store dev and release metrics
+     * in different places, set this to true
+     */
+    setTrackInDevMode(track: boolean): void;
+
+    /** Shutdown the data store, if the backend supports it */
+    shutdown() : Promise<void>;
     /** Set whether the user has opted out of stats reporting. */
     setOptOut(optOut: boolean): Promise<void>;
     reportStats(getDate: () => string): Promise<void>;
-    sendOptInStatusPing(optIn: boolean): Promise<void>;
-    getDailyStats(getDate: () => string): Promise<IMetrics>;
+
     addCustomEvent(eventType: string, event: object): Promise<void>;
     /**
      * Add timing data to the stats store, to be sent with the daily metrics requests.
@@ -85,9 +96,5 @@ declare module "telemetry-github" {
      * Increment a counter.  This is used to track usage statistics.
      */
     incrementCounter(counterName: string): Promise<void>;
-    /** Should the app report its daily stats?
-     * Public for testing purposes only.
-     */
-    hasReportingIntervalElapsed(): boolean;
   }
 }

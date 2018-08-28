@@ -1,28 +1,29 @@
 import { assert } from "chai";
 import { StatsStore, AppName, StatsGUIDKey } from "../src/index";
-import { IStorage } from "../src/interfaces";
+import { ISettings } from "telemetry-github";
 
-class MemoryStorage implements IStorage {
+class MemoryStorage implements ISettings {
   public storage = new Map<string, string>();
 
-  getItem(key: string): string | undefined {
-    return this.storage.get(key);
+  public getItem(key: string): Promise<string | undefined> {
+    return Promise.resolve(this.storage.get(key));
   }
 
-  setItem(key: string, value: string): void {
+  public setItem(key: string, value: string): Promise<void> {
     this.storage.set(key, value);
+    return Promise.resolve();
   }
 }
 
-// describe("uuid", () => {
-//   describe("getGUID", function() {
-//     it("uses cached GUID if one exists already", function() {
-//       const storage = new MemoryStorage();
-//       let store = new StatsStore(AppName.Atom, "1.0", false, () => "", storage);
-//       const GUID = storage.getItem(StatsGUIDKey);
-//       store = new StatsStore(AppName.Atom, "1.0", false, () => "", storage);
-//       const GUID2 = storage.getItem(StatsGUIDKey);
-//       assert.deepEqual(GUID, GUID2);
-//     });
-//   });
-// });
+describe("uuid", () => {
+  describe("getGUID", function() {
+    it("uses cached GUID if one exists already", async function() {
+      const storage = new MemoryStorage();
+      let store1 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
+      let store2 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
+      assert.deepEqual((<any>store1).guid, (<any>store2).guid);
+      await store1.shutdown();
+      await store2.shutdown();
+    });
+  });
+});

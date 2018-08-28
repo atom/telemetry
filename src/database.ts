@@ -1,21 +1,6 @@
 import * as loki from "lokijs";
 import { MultipleCounterError } from "./errors";
-
-interface ICounter {
-  name: string;
-  count: number;
-}
-
-export interface IStatsDatabase {
-  close(): void;
-  incrementCounter(counterName: string): void;
-  clearData(): void;
-  getCounters(): Promise<ICounter[]>;
-  addCustomEvent(eventType: string, customEvent: any): void;
-  addTiming(eventType: string, durationInMilliseconds: number, metadata: object): void;
-  getCustomEvents(): Promise<object[]>;
-  getTimings(): Promise<object[]>;
-}
+import { IStatsDatabase, ICounter } from 'telemetry-github'
 
 export default class StatsDatabase implements IStatsDatabase {
   private db: loki;
@@ -42,28 +27,33 @@ export default class StatsDatabase implements IStatsDatabase {
   private getDate: () => string;
 
   public constructor(getISODate: () => string) {
-    this.db = new loki("stats-database", {
-      autosave: true,
-      autoload: true,
-      autosaveInterval: 10000, // 10 seconds
-    });
+    this.db = new loki("stats-database");
     this.counters = this.db.addCollection("counters");
     this.customEvents = this.db.addCollection("customEvents");
     this.timings = this.db.addCollection("timing");
     this.getDate = () => getISODate();
   }
 
-  public async close() {
-    this.db.close();
+  public async close(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.db.close(e => {
+        if (e) {
+          reject(e);
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 
-  public async addCustomEvent(eventType: string, customEvent: any) {
+  public async addCustomEvent(eventType: string, customEvent: any): Promise<void> {
     customEvent.date = this.getDate();
     customEvent.eventType = eventType;
     this.customEvents.insert(customEvent);
+    return Promise.resolve();
   }
 
-  public async incrementCounter(counterName: string) {
+  public async incrementCounter(counterName: string): Promise<void> {
     const existing = await this.getUnformattedCounter(counterName);
     if (existing) {
       existing.count += 1;
@@ -71,20 +61,23 @@ export default class StatsDatabase implements IStatsDatabase {
     } else {
       this.counters.insert({ name: counterName, count: 1 });
     }
+    return Promise.resolve();
   }
 
-  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
+  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}): Promise<void> {
     const timingData = { eventType, durationInMilliseconds, metadata, date: this.getDate() };
     this.timings.insert(timingData);
+    return Promise.resolve();
   }
 
   /** Clears all values that exist in the database.
    * returns nothing.
    */
-  public async clearData() {
+  public async clearData(): Promise<void> {
     await this.counters.clear();
     await this.customEvents.clear();
     await this.timings.clear();
+    return Promise.resolve();
   }
 
   public async getTimings(): Promise<object[]> {
@@ -116,7 +109,7 @@ export default class StatsDatabase implements IStatsDatabase {
     this.counters.find().forEach(counter => {
       counters.push({ name: counter.name, count: counter.count });
     });
-    return counters;
+    return Promise.resolve(counters);
   }
 
   /** Get a single counter.

@@ -1,11 +1,12 @@
-import { ISettings } from "./interfaces";
+import { ISettings } from "telemetry-github";
 
 export class LocalStorage implements ISettings {
-  public getItem(key: string): string | undefined {
-    return localStorage.getItem(key) || undefined;
+  public getItem(key: string): Promise<string | undefined> {
+    return Promise.resolve(localStorage.getItem(key) || undefined);
   }
 
-  public setItem(key: string, value: string): void {
+  public setItem(key: string, value: string): Promise<void> {
     localStorage.setItem(key, value);
+    return Promise.resolve();
   }
 }
