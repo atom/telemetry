@@ -5,7 +5,7 @@
   "repository": {
     "url": "https://github.com/atom/telemetry"
   },
-  "main": "./lib/index.js",
+  "main": "./lib/src/index.js",
   "types": "./index.d.ts",
   "files": [
     "lib",
