@@ -19,7 +19,7 @@ const USAGE_HOST = "central.github.com";
 const USAGE_PROTOCOL = "https:";
 const USAGE_PORT: string | undefined = undefined;
 
-const USAGE_PATH = "api/usage/";
+const USAGE_PATH = "/api/usage/";
 
 export const StatsGUIDKey = "stats-guid";
 
