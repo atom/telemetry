@@ -28,10 +28,13 @@
     "doc:html": "typedoc src/ --target ES6 --mode file --out build/docs",
     "doc:json": "typedoc src/ --target ES6 --mode file --json build/docs/typedoc.json",
     "version": "standard-version",
-    "reset": "git clean -dfx && git reset --hard && npm i",
-    "clean": "trash lib test/*.js",
+    "reset": "git clean -dfx && git reset --hard && yarn i --prefer-offline",
+    "clean": "trash lib test/*.js dist/*.tgz",
     "all": "run-s reset test cov:check doc:html",
-    "prepare-release": "run-s all version doc:publish"
+    "prepare-release": "run-s all version doc:publish",
+    "package": "yarn pack && mv telemetry-github-*.tgz dist/",
+    "prepublish": "run-s version && git push --follow-tags && run-s build && run-s package",
+    "publish": "release-it"
   },
   "scripts-info": {
     "info": "Display information about the package scripts",
