@@ -89,7 +89,7 @@ describe("StatsStore", function() {
 
       // counters should be cleared in success case
       const counters = (await store.getDailyStats(getDate)).measures;
-      assert.deepEqual(counters, []);
+      assert.deepEqual(counters, {});
     });
     it("handles failure case", async function() {
       postStub.resolves(POST_ERROR);
@@ -141,19 +141,19 @@ describe("StatsStore", function() {
       store.setDevMode(true);
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, []);
+      assert.deepEqual(stats.measures, {});
     });
     it("does not increment counter if user has opted out", async function() {
       postStub.resolves(POST_SUCCESS);
       store.setOptOut(true);
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, []);
+      assert.deepEqual(stats.measures, {});
     });
     it("does increment counter if non dev and user has opted in", async function() {
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, [{ name: "commits", count: 1 }]);
+      assert.deepEqual(stats.measures, { commits: 1 });
     });
   });
   describe("post", async function() {
@@ -267,7 +267,7 @@ describe("StatsStore", function() {
       expect(dimensions.gitHubUser).to.eq(gitHubUser);
 
       const counters = event.measures;
-      assert.deepEqual(counters, [{ name: counter1, count: 1 }, { name: counter2, count: 2 }]);
+      assert.deepEqual(counters, { [counter1]: 1,  [counter2]: 2 });
 
       const customEvents = event.customEvents;
       expect(customEvents.length).to.eq(2);

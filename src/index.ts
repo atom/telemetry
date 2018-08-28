@@ -200,8 +200,11 @@ export class StatsStore {
   public async getDailyStats(getDate: () => string): Promise<IMetrics> {
     await this.initialize();
 
+    const measures: any = {};
+    (await this.database.getCounters()).forEach((x, _, __) => measures[x.name] = x.count);
+
     return {
-      measures: await this.database.getCounters(),
+      measures,
       customEvents: await this.database.getCustomEvents(),
       timings: await this.database.getTimings(),
       dimensions: {
