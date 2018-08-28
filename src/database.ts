@@ -24,14 +24,11 @@ export default class StatsDatabase implements IStatsDatabase {
    */
   private timings: Collection<any>;
 
-  private getDate: () => string;
-
-  public constructor(getISODate: () => string) {
+  public constructor(readonly getDate: () => string = () => new Date(Date.now()).toISOString()) {
     this.db = new loki("stats-database");
     this.counters = this.db.addCollection("counters");
     this.customEvents = this.db.addCollection("customEvents");
     this.timings = this.db.addCollection("timing");
-    this.getDate = () => getISODate();
   }
 
   public async close(): Promise<void> {
