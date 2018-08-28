@@ -33,8 +33,7 @@
     "all": "run-s reset test cov:check doc:html",
     "prepare-release": "run-s all version doc:publish",
     "package": "yarn pack && mv telemetry-github-*.tgz dist/",
-    "prepublish": "run-s version && git push --follow-tags && run-s build && run-s package",
-    "publish": "release-it"
+    "publish": "run-s version && git push --follow-tags && run-s build && run-s package && release-it"
   },
   "scripts-info": {
     "info": "Display information about the package scripts",
@@ -55,6 +54,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "conventional-changelog-cli": "^2.0.5",
     "uuid": "^3.3.2"
   },
   "optionalDependencies": {
