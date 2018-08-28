@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.37"></a>
+## [0.0.37](https://github.com/atom/telemetry/compare/0.0.36...0.0.37) (2018-08-28)
+
+
+### Bug Fixes
+
+* We need to await async things ([4e43758](https://github.com/atom/telemetry/commit/4e43758))
+
+
+
 <a name="0.0.36"></a>
 ## [0.0.36](https://github.com/atom/telemetry/compare/0.0.35...0.0.36) (2018-08-28)
 
