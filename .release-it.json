@@ -1,7 +1,7 @@
 {
   "verbose": true,
   "increment": false,
-  "changelogCommand": "node_modules/.bin/conventional-changelog -p angular | tail -n +3",
+  "changelogCommand": "node_modules/.bin/conventional-changelog -p angular -r2 | tail -n +3",
   "requireCleanWorkingDir": false,
   "src": {
     "commit": false,
