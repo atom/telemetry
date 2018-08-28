@@ -305,9 +305,9 @@ export class StatsStore {
     }
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
-    this.timer = setInterval(() => {
-      if (this.hasReportingIntervalElapsed()) {
-        this.reportStats(getISODate);
+    this.timer = setInterval(async () => {
+      if (await this.hasReportingIntervalElapsed()) {
+        await this.reportStats(getISODate);
       }
     }, loopInterval);
     return this.timer;
@@ -317,7 +317,7 @@ export class StatsStore {
     let guid = await this.settings.getItem(StatsGUIDKey);
     if (!guid) {
       guid = uuid();
-      this.settings.setItem(StatsGUIDKey, guid);
+      await this.settings.setItem(StatsGUIDKey, guid);
     }
     return guid;
   }
