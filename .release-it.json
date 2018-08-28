@@ -2,7 +2,6 @@
   "verbose": true,
   "increment": "false",
   "changelogCommand": "node_modules/.bin/conventional-changelog -p angular | tail -n +3",
-  "safeBump": false,
   "requireCleanWorkingDir": false,
   "src": {
     "commit": true,
