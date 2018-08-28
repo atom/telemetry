@@ -22,12 +22,11 @@ describe("database", async function() {
   });
   afterEach(async function() {
     await database.close();
-  })
+  });
   /** Uncomment this to check for async leaks in tests */
   // after(function () {
   //   (<any>global).asyncDump();
   // });
-
 
   // inserting into lokijs mutates the passed-in object
   // so that you can't insert the same object twice.
@@ -104,7 +103,7 @@ describe("database", async function() {
       await database.incrementCounter(counterName);
       await database.incrementCounter("foo");
       const counters = await database.getCounters();
-      assert.deepEqual(counters, new Array({name: counterName, count: 1}, { name: 'foo', count: 1 }));
+      assert.deepEqual(counters, new Array({name: counterName, count: 1}, { name: "foo", count: 1 }));
     });
   });
   describe("clearData", function() {

@@ -1,10 +1,10 @@
-import { IStatsDatabase, ISettings, IMetrics } from 'telemetry-github'
+import { IStatsDatabase, ISettings, IMetrics } from "telemetry-github";
 import { uuid } from "./uuid";
 import { LocalStorage } from "./storage";
 import StatsDatabase from "./database";
 import { IncomingMessage, RequestOptions } from "http";
-import * as https from 'https';
-import { ReportError, PingError } from './errors';
+import * as https from "https";
+import { ReportError, PingError } from "./errors";
 
 export const enum AppName {
   Atom = "atom",
@@ -15,11 +15,11 @@ export const enum AppName {
 // const USAGE_HOST = 'localhost';
 // const USAGE_PROTOCOL = 'http:'
 // const USAGE_PORT = '4000'
-const USAGE_HOST = 'central.github.com';
-const USAGE_PROTOCOL = 'https:'
+const USAGE_HOST = "central.github.com";
+const USAGE_PROTOCOL = "https:";
 const USAGE_PORT: string | undefined = undefined;
 
-const USAGE_PATH = 'api/usage/';
+const USAGE_PATH = "api/usage/";
 
 export const StatsGUIDKey = "stats-guid";
 
@@ -46,6 +46,10 @@ export const ReportingLoopIntervalInMs = hours * 4;
 const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
+
+  private get isEnabled(): boolean {
+    return !this.optOut && (!this.isDevMode || this.trackInDevMode);
+  }
   private timer: NodeJS.Timer | undefined;
 
   /** Has the user opted out of stats reporting? */
@@ -71,10 +75,6 @@ export class StatsStore {
 
   private guid: string | undefined;
 
-  private get isEnabled() : boolean {
-    return !this.optOut && (!this.isDevMode || this.trackInDevMode);
-  }
-
   public constructor(
     appName: AppName,
     version: string,
@@ -86,26 +86,6 @@ export class StatsStore {
     this.usagePath = USAGE_PATH + appName;
     this.getAccessToken = getAccessToken;
     this.timer = this.getTimer(ReportingLoopIntervalInMs);
-  }
-
-  private async initialize(): Promise<void> {
-    if (this.guid) return;
-    this.guid = await this.getGUID();
-
-    const optOutValue = await this.settings.getItem(StatsOptOutKey);
-    if (optOutValue) {
-      this.optOut = !!parseInt(optOutValue, 10);
-
-      // If the user has set an opt out value but we haven't sent the ping yet,
-      // give it a shot now.
-      if (!(await this.settings.getItem(HasSentOptInPingKey))) {
-        if (!this.isDevMode || this.trackInDevMode) {
-          await this.sendOptInStatusPing(!this.optOut);
-        }
-      }
-    } else {
-      this.optOut = false;
-    }
   }
 
   public async shutdown(): Promise<void> {
@@ -143,11 +123,10 @@ export class StatsStore {
     }
   }
 
-
   public async addCustomEvent(eventType: string, event: object) {
     await this.initialize();
 
-    if (!this.isEnabled) return;
+    if (!this.isEnabled) { return; }
 
     await this.database.addCustomEvent(eventType, event);
   }
@@ -158,7 +137,7 @@ export class StatsStore {
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
     await this.initialize();
 
-    if (!this.isEnabled) return;
+    if (!this.isEnabled) { return; }
 
     await this.database.addTiming(eventType, durationInMilliseconds, metadata);
   }
@@ -169,7 +148,7 @@ export class StatsStore {
   public async incrementCounter(counterName: string) {
     await this.initialize();
 
-    if (!this.isEnabled) return;
+    if (!this.isEnabled) { return; }
 
     await this.database.incrementCounter(counterName);
   }
@@ -177,7 +156,7 @@ export class StatsStore {
   public async reportStats(getDate: () => string) {
     await this.initialize();
 
-    if (!this.isEnabled) return;
+    if (!this.isEnabled) { return; }
 
     const stats = await this.getDailyStats(getDate);
 
@@ -271,7 +250,7 @@ export class StatsStore {
         });
         post.write(body);
         post.end();
-      } catch(e) {
+      } catch (e) {
         reject(e);
       }
     });
@@ -293,6 +272,26 @@ export class StatsStore {
 
     const now = Date.now();
     return now - lastDate > DailyStatsReportIntervalInMs;
+  }
+
+  private async initialize(): Promise<void> {
+    if (this.guid) { return; }
+    this.guid = await this.getGUID();
+
+    const optOutValue = await this.settings.getItem(StatsOptOutKey);
+    if (optOutValue) {
+      this.optOut = !!parseInt(optOutValue, 10);
+
+      // If the user has set an opt out value but we haven't sent the ping yet,
+      // give it a shot now.
+      if (!(await this.settings.getItem(HasSentOptInPingKey))) {
+        if (!this.isDevMode || this.trackInDevMode) {
+          await this.sendOptInStatusPing(!this.optOut);
+        }
+      }
+    } else {
+      this.optOut = false;
+    }
   }
 
   /** Set a timer so we can report the stats when the time comes. */

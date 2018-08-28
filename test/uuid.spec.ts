@@ -19,9 +19,9 @@ describe("uuid", () => {
   describe("getGUID", function() {
     it("uses cached GUID if one exists already", async function() {
       const storage = new MemoryStorage();
-      let store1 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
-      let store2 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
-      assert.deepEqual((<any>store1).guid, (<any>store2).guid);
+      const store1 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
+      const store2 = new StatsStore(AppName.Atom, "1.0", () => "", storage);
+      assert.deepEqual((store1 as any).guid, (store2 as any).guid);
       await store1.shutdown();
       await store2.shutdown();
     });

@@ -24,9 +24,9 @@ const getEmptyAccessToken = () => {
   return "";
 };
 
-const postResponse_Success = { status: 200, statusCode: 200 };
-const postResponse_Error = { status: 500, statusCode: 500 };
-const postResponse_DefaultStub = { status: 1000, statusCode: 1000 };
+const POST_SUCCESS = { status: 200, statusCode: 200 };
+const POST_ERROR = { status: 500, statusCode: 500 };
+const POST_STUB = { status: 1000, statusCode: 1000 };
 
 describe("StatsStore", function() {
   const version = "1.2.3";
@@ -35,18 +35,20 @@ describe("StatsStore", function() {
   let shouldReportStub: sinon.SinonStub;
   const pingEvent = { eventType: "ping", dimensions: {optIn: false} };
   let accessTokenFunc: () => string = () => "";
-  let getAccessToken: () => string = () => accessTokenFunc();
+  const getAccessToken: () => string = () => accessTokenFunc();
 
   beforeEach(function() {
     accessTokenFunc = getFilledAccessToken;
     store = new StatsStore(AppName.Atom, version, getAccessToken);
     postStub = sinon.stub(store, "post");
-    postStub.resolves(postResponse_DefaultStub);
+    postStub.resolves(POST_STUB);
   });
   afterEach(async function() {
     try {
-      (<any>store.post).restore();
-    } catch {}
+      (store.post as any).restore();
+    } catch {
+      // don't care
+    }
     localStorage.clear();
     await store.shutdown();
   });
@@ -54,7 +56,7 @@ describe("StatsStore", function() {
     let clock: sinon.SinonFakeTimers;
     beforeEach(function() {
       clock = sinon.useFakeTimers();
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
     });
     afterEach(function() {
       clock.restore();
@@ -67,7 +69,7 @@ describe("StatsStore", function() {
     });
     it("does not report stats when shouldReportDailyStats returns false", function() {
       shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       setTimeout(() => {
         sinon.assert.notCalled(postStub);
       }, ReportingLoopIntervalInMs + 100);
@@ -76,12 +78,12 @@ describe("StatsStore", function() {
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
     beforeEach(async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       await store.incrementCounter("commit");
       fakeEvent = await store.getDailyStats(getDate);
     });
     it("handles success case", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       await store.reportStats(getDate);
       sinon.assert.calledWith(postStub, fakeEvent);
 
@@ -90,7 +92,7 @@ describe("StatsStore", function() {
       assert.deepEqual(counters, []);
     });
     it("handles failure case", async function() {
-      postStub.resolves(postResponse_Error);
+      postStub.resolves(POST_ERROR);
       expect(store.reportStats(getDate)).to.be.rejectedWith(ReportError);
 
       // counters should not be cleared if we fail to send daily stats
@@ -103,7 +105,7 @@ describe("StatsStore", function() {
       sinon.assert.notCalled(postStub);
     });
     it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       store.setOptOut(true);
       await store.reportStats(getDate);
       await store.reportStats(getDate);
@@ -121,7 +123,7 @@ describe("StatsStore", function() {
       assert.deepEqual(stats.timings, []);
     });
     it("does not add timer if user has opted out", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       store.setOptOut(true);
       await store.addTiming("load", 100);
       const stats = await store.getDailyStats(getDate);
@@ -142,7 +144,7 @@ describe("StatsStore", function() {
       assert.deepEqual(stats.measures, []);
     });
     it("does not increment counter if user has opted out", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       store.setOptOut(true);
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
@@ -151,18 +153,18 @@ describe("StatsStore", function() {
     it("does increment counter if non dev and user has opted in", async function() {
       await store.incrementCounter(counterName);
       const stats = await store.getDailyStats(getDate);
-      assert.deepEqual(stats.measures, [{ name: 'commits', count: 1 }]);
+      assert.deepEqual(stats.measures, [{ name: "commits", count: 1 }]);
     });
   });
   describe("post", async function() {
     let fetchStub: sinon.SinonStub;
     beforeEach(async function() {
       fetchStub = sinon.stub(store, "fetch");
-      fetchStub.resolves(postResponse_Success);
-      (<any>store.post).restore();
+      fetchStub.resolves(POST_SUCCESS);
+      (store.post as any).restore();
     });
     afterEach(function() {
-      (<any>store.fetch).restore();
+      (store.fetch as any).restore();
     });
 
     it("sends the auth header if one exists", async function() {
@@ -184,12 +186,12 @@ describe("StatsStore", function() {
   describe("setOptOut", async function() {
     it("sets the opt out preferences in local storage", async function() {
       assert.notOk(localStorage.getItem(StatsOptOutKey));
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       await store.setOptOut(true);
       assert.ok(localStorage.getItem(StatsOptOutKey));
     });
     it("does not send ping in dev mode", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       store.setDevMode(true);
       await store.setOptOut(true);
       sinon.assert.notCalled(postStub);
@@ -219,14 +221,14 @@ describe("StatsStore", function() {
   });
   describe("sendOptInStatusPing", async function() {
     it("handles success", async function() {
-      postStub.resolves(postResponse_Success);
+      postStub.resolves(POST_SUCCESS);
       await store.sendOptInStatusPing(false);
       sinon.assert.calledWith(postStub, pingEvent);
 
       assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), "1");
     });
     it("handles error", async function() {
-      postStub.resolves(postResponse_Error);
+      postStub.resolves(POST_ERROR);
       expect(store.sendOptInStatusPing(false)).to.be.rejectedWith(PingError);
 
       assert.strictEqual(localStorage.getItem(HasSentOptInPingKey), null);
@@ -260,7 +262,7 @@ describe("StatsStore", function() {
       expect(dimensions.platform).to.eq(process.platform);
       expect(dimensions.date).to.eq(getDate());
       expect(dimensions.eventType).to.eq("usage");
-      expect(dimensions.guid).to.eq((<any>store).guid);
+      expect(dimensions.guid).to.eq((store as any).guid);
       expect(dimensions.language).to.eq(process.env.LANG);
       expect(dimensions.gitHubUser).to.eq(gitHubUser);
 

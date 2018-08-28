@@ -1,6 +1,6 @@
 import * as loki from "lokijs";
 import { MultipleCounterError } from "./errors";
-import { IStatsDatabase, ICounter } from 'telemetry-github'
+import { IStatsDatabase, ICounter } from "telemetry-github";
 
 export default class StatsDatabase implements IStatsDatabase {
   private db: loki;

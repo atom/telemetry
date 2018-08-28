@@ -28,7 +28,7 @@ declare module "telemetry-github" {
     dimensions: IDimensions;
     // metrics names are defined by the client and thus aren't knowable
     // at compile time here.
-    measures: object;
+    measures: ICounter[];
 
     // array of custom events that can be defined by the client
     customEvents: object[];
