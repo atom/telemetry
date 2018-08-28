@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.30"></a>
+## [0.0.30](https://github.com/atom/telemetry/compare/v0.0.29...v0.0.30) (2018-08-28)
+
+
+### Bug Fixes
+
+* Clean database constructor ([cb58eaa](https://github.com/atom/telemetry/commit/cb58eaa))
+
+
+
 <a name="0.0.29"></a>
 ## 0.0.29 (2018-08-28)
 
