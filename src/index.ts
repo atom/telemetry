@@ -2,7 +2,6 @@ import { IStatsDatabase, ISettings, IMetrics } from 'telemetry-github'
 import { uuid } from "./uuid";
 import { LocalStorage } from "./storage";
 import StatsDatabase from "./database";
-
 import { IncomingMessage, RequestOptions } from "http";
 import * as https from 'https';
 import { ReportError, PingError } from './errors';

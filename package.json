@@ -52,8 +52,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "lokijs": "^1.5.5",
     "uuid": "^3.3.2"
+  },
+  "optionalDependencies": {
+    "lokijs": "^1.5.5"
   },
   "devDependencies": {
     "@bitjson/npm-scripts-info": "^1.0.0",
