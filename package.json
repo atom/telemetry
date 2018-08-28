@@ -27,7 +27,7 @@
     "doc": "run-s doc:html && opn build/docs/index.html",
     "doc:html": "typedoc src/ --target ES6 --mode file --out build/docs",
     "doc:json": "typedoc src/ --target ES6 --mode file --json build/docs/typedoc.json",
-    "version": "standard-version",
+    "version": "standard-version -t ''",
     "reset": "git clean -dfx && git reset --hard && yarn i --prefer-offline",
     "clean": "trash lib test/*.js dist/*.tgz",
     "all": "run-s reset test cov:check doc:html",
