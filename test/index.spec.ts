@@ -101,6 +101,22 @@ describe("StatsStore", function() {
       await setTimeoutPromise(1);
       sinon.assert.calledTwice(reportStub);
     })
+    it("sends daily", async function() {
+      customStore = new StatsStore(AppName.Atom, version);
+      let reportStub = sinon.stub(customStore, "reportStats");
+
+      // go forward two days
+      clock.tick(customStore.configuration.reportIntervalInMs * 2);
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+      sinon.assert.calledOnce(reportStub);
+
+      // go forward another day
+      clock.tick(customStore.configuration.reportIntervalInMs);
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+      sinon.assert.calledTwice(reportStub);
+    })
   });
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;
