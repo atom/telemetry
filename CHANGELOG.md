@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.1.0"></a>
+# [0.1.0](https://github.com/atom/telemetry/compare/0.0.37...0.1.0) (2018-08-29)
+
+
+### Features
+
+* Make report intervals configurable ([4baf127](https://github.com/atom/telemetry/commit/4baf127))
+
+
+
 <a name="0.0.37"></a>
 ## [0.0.37](https://github.com/atom/telemetry/compare/0.0.36...0.0.37) (2018-08-28)
 
