@@ -5,8 +5,9 @@ import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import { IMetrics } from "telemetry-github";
-import { reporters } from "mocha";
 import { ReportError, PingError } from "../src/errors";
+import * as util from 'util';
+const setTimeoutPromise = util.promisify(setTimeout);
 
 chai.use(chaiAsPromised);
 
@@ -54,26 +55,52 @@ describe("StatsStore", function() {
   });
   describe("constructor", function() {
     let clock: sinon.SinonFakeTimers;
+    let customStore: StatsStore;
     beforeEach(function() {
       clock = sinon.useFakeTimers();
       postStub.resolves(POST_SUCCESS);
     });
-    afterEach(function() {
+    afterEach(async function() {
       clock.restore();
+      await customStore.shutdown();
     });
-    it("reports stats when hasReportingIntervalElapsed returns true", function() {
-      shouldReportStub = sinon.stub((store as any), "hasReportingIntervalElapsed").callsFake(() => true);
-      setTimeout(() => {
-        sinon.assert.called(postStub);
-      }, 100);
+    it("reports stats when hasReportingIntervalElapsed returns true", async function() {
+      customStore = new StatsStore(AppName.Atom, version);
+      let reportStub = sinon.stub(customStore, "reportStats");
+      shouldReportStub = sinon.stub((customStore as any), "hasReportingIntervalElapsed").callsFake(async () => true);
+      clock.tick(2 * 60 * 1000);
+
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+      sinon.assert.called(shouldReportStub);
+      sinon.assert.called(reportStub);
     });
-    it("does not report stats when shouldReportDailyStats returns false", function() {
-      shouldReportStub = sinon.stub((store as any), "hasReportingIntervalElapsed").callsFake(() => false);
-      postStub.resolves(POST_SUCCESS);
-      setTimeout(() => {
-        sinon.assert.notCalled(postStub);
-      }, 100);
+    it("does not report stats when shouldReportDailyStats returns false", async function() {
+      customStore = new StatsStore(AppName.Atom, version);
+      let reportStub = sinon.stub(customStore, "reportStats");
+      shouldReportStub = sinon.stub((customStore as any), "hasReportingIntervalElapsed").callsFake(async () => false);
+      clock.tick(2 * 60 * 1000);
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+
+      sinon.assert.called(shouldReportStub);
+      sinon.assert.notCalled(reportStub);
     });
+    it("obeys custom report intervals", async function() {
+      customStore = new StatsStore(AppName.Atom, version, getAccessToken, undefined, undefined,
+        { reportIntervalInMs: 1000, initialReportDelayInMs: 1000 });
+      let reportStub = sinon.stub(customStore, "reportStats");
+
+      clock.tick(1000);
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+      sinon.assert.calledOnce(reportStub);
+
+      clock.tick(1000);
+      // we need to yield the thread for the rest of the awaited calls to happen
+      await setTimeoutPromise(1);
+      sinon.assert.calledTwice(reportStub);
+    })
   });
   describe("reportStats", async function() {
     let fakeEvent: IMetrics;

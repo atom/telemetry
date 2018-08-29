@@ -87,16 +87,22 @@ export class StatsStore {
       initialReportDelayInMs: DefaultInitialReportTimerInMs
     }
   ) {
+    if (!this.settings) {
+      this.settings = new LocalStorage();
+    }
+    if (!this.database) {
+      this.database = new StatsDatabase(getISODate);
+    }
     this.version = version;
     this.usagePath = USAGE_PATH + appName;
     this.getAccessToken = getAccessToken;
-    this.timer = setTimeout(this.maybeReportStats, this.configuration.initialReportDelayInMs);
+    this.timer = setTimeout(async () => this.maybeReportStats(), this.configuration.initialReportDelayInMs);
   }
 
   public async shutdown(): Promise<void> {
     this.database.close();
     if (this.timer) {
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.timer = undefined;
     }
   }
@@ -317,7 +323,7 @@ export class StatsStore {
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
     const timeToNextReport = await this.getTimeToNextReport();
-    this.timer = setTimeout(this.maybeReportStats, timeToNextReport);
+    this.timer = setTimeout(async () => this.maybeReportStats(), timeToNextReport);
     return this.timer;
   }
 
