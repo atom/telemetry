@@ -1,4 +1,4 @@
-import { IStatsDatabase, ISettings, IMetrics } from "telemetry-github";
+import { IStatsDatabase, ISettings, IMetrics, IAppConfiguration } from "telemetry-github";
 import { uuid } from "./uuid";
 import { LocalStorage } from "./storage";
 import StatsDatabase from "./database";
@@ -36,10 +36,10 @@ const minutes = 60 * 1000;
 const hours = 60 * minutes;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
-export const DailyStatsReportIntervalInMs = hours * 24;
+const DefaultStatsReportIntervalInMs = hours * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopIntervalInMs = minutes * 5; // every 5 minutes
+const DefaultInitialReportTimerInMs = minutes * 2;
 
 /** helper for getting the date, which we pass in so that we can mock
  * in unit tests.
@@ -80,13 +80,17 @@ export class StatsStore {
     appName: AppName,
     version: string,
     getAccessToken = () => "",
-    private settings: ISettings = new LocalStorage(),
-    private database: IStatsDatabase = new StatsDatabase(getISODate)
+    private readonly settings: ISettings = new LocalStorage(),
+    private readonly database: IStatsDatabase = new StatsDatabase(getISODate),
+    readonly configuration: IAppConfiguration = {
+      reportIntervalInMs: DefaultStatsReportIntervalInMs,
+      initialReportDelayInMs: DefaultInitialReportTimerInMs
+    }
   ) {
     this.version = version;
     this.usagePath = USAGE_PATH + appName;
     this.getAccessToken = getAccessToken;
-    this.timer = this.getTimer(ReportingLoopIntervalInMs);
+    this.timer = setTimeout(this.maybeReportStats, this.configuration.initialReportDelayInMs);
   }
 
   public async shutdown(): Promise<void> {
@@ -260,24 +264,6 @@ export class StatsStore {
     });
   }
 
-  /** Should the app report its daily stats?
-   * Public for testing purposes only.
-   */
-  public async hasReportingIntervalElapsed(): Promise<boolean> {
-    const lastDateString = await this.settings.getItem(LastDailyStatsReportKey);
-    let lastDate = 0;
-    if (lastDateString && lastDateString.length > 0) {
-      lastDate = parseInt(lastDateString, 10);
-    }
-
-    if (isNaN(lastDate)) {
-      lastDate = 0;
-    }
-
-    const now = Date.now();
-    return now - lastDate > DailyStatsReportIntervalInMs;
-  }
-
   private async initialize(): Promise<void> {
     if (this.guid) { return; }
     this.guid = await this.getGUID();
@@ -298,20 +284,49 @@ export class StatsStore {
     }
   }
 
-  /** Set a timer so we can report the stats when the time comes. */
-  private getTimer(loopInterval: number): NodeJS.Timer {
-    if (this.timer) {
-      clearInterval(this.timer);
+  /** Should the app report its daily stats?
+   */
+  private async hasReportingIntervalElapsed(): Promise<boolean> {
+    return (await this.getTimeToNextReport()) === 0;
+  }
+
+  private async getTimeToNextReport(): Promise<number> {
+    const lastDateString = await this.settings.getItem(LastDailyStatsReportKey);
+    let lastDate = 0;
+    if (lastDateString && lastDateString.length > 0) {
+      lastDate = parseInt(lastDateString, 10);
     }
+
+    if (isNaN(lastDate)) {
+      lastDate = 0;
+    }
+
+    const now = Date.now();
+    const timeToNextReport = (this.configuration.reportIntervalInMs - (now - lastDate));
+    return timeToNextReport < 0 ? 0 : timeToNextReport;
+  }
+
+  /** Set a timer so we can report the stats when the time comes. */
+  private async getTimer(): Promise<NodeJS.Timer> {
+
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
-    this.timer = setInterval(async () => {
-      if (await this.hasReportingIntervalElapsed()) {
-        await this.reportStats(getISODate);
-      }
-    }, loopInterval);
+    const timeToNextReport = await this.getTimeToNextReport();
+    this.timer = setTimeout(this.maybeReportStats, timeToNextReport);
     return this.timer;
   }
+
+  private async maybeReportStats(): Promise<void> {
+    if (await this.hasReportingIntervalElapsed()) {
+      await this.reportStats(getISODate);
+    }
+    this.timer = await this.getTimer();
+}
 
   private async getGUID(): Promise<string> {
     let guid = await this.settings.getItem(StatsGUIDKey);

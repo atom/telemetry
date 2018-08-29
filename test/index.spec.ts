@@ -1,6 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
-  LastDailyStatsReportKey, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, HasSentOptInPingKey,
+  LastDailyStatsReportKey, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -62,17 +62,17 @@ describe("StatsStore", function() {
       clock.restore();
     });
     it("reports stats when hasReportingIntervalElapsed returns true", function() {
-      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => true);
+      shouldReportStub = sinon.stub((store as any), "hasReportingIntervalElapsed").callsFake(() => true);
       setTimeout(() => {
         sinon.assert.called(postStub);
-      }, ReportingLoopIntervalInMs + 100);
+      }, 100);
     });
     it("does not report stats when shouldReportDailyStats returns false", function() {
-      shouldReportStub = sinon.stub(store, "hasReportingIntervalElapsed").callsFake(() => false);
+      shouldReportStub = sinon.stub((store as any), "hasReportingIntervalElapsed").callsFake(() => false);
       postStub.resolves(POST_SUCCESS);
       setTimeout(() => {
         sinon.assert.notCalled(postStub);
-      }, ReportingLoopIntervalInMs + 100);
+      }, 100);
     });
   });
   describe("reportStats", async function() {
@@ -212,11 +212,12 @@ describe("StatsStore", function() {
   describe("hasReportingIntervalElapsed", function() {
     it("returns false if not enough time has elapsed since last report", async function() {
       localStorage.setItem(LastDailyStatsReportKey, (Date.now()).toString());
-      assert.isFalse(await store.hasReportingIntervalElapsed());
+      assert.isFalse(await (store as any).hasReportingIntervalElapsed());
     });
     it("returns true if enough time has elapsed since last report", async function() {
-      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportIntervalInMs - 1).toString());
-      assert.isTrue(await store.hasReportingIntervalElapsed());
+      localStorage.setItem(LastDailyStatsReportKey,
+        (Date.now() - store.configuration.reportIntervalInMs - 1).toString());
+      assert.isTrue(await (store as any).hasReportingIntervalElapsed());
     });
   });
   describe("sendOptInStatusPing", async function() {

@@ -1,4 +1,10 @@
 declare module "telemetry-github" {
+
+  export interface IAppConfiguration {
+    reportIntervalInMs: number;
+    initialReportDelayInMs: number;
+  }
+
   export interface ISettings {
     getItem(key: string): Promise<string | undefined>;
     setItem(key: string, value: string): Promise<void>;
@@ -64,7 +70,8 @@ declare module "telemetry-github" {
       version: string,
       getAccessToken?: () => string,
       settings?: ISettings,
-      database?: IStatsDatabase
+      database?: IStatsDatabase,
+      configuration?: IAppConfiguration
     );
 
     /** Set the username to send along with the metrics (optional) */

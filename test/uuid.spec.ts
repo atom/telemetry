@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { StatsStore, AppName, StatsGUIDKey } from "../src/index";
+import { StatsStore, AppName } from "../src/index";
 import { ISettings } from "telemetry-github";
 
 class MemoryStorage implements ISettings {
