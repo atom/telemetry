@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.1.1"></a>
+## [0.1.1](https://github.com/atom/telemetry/compare/0.1.0...0.1.1) (2018-08-29)
+
+
+### Bug Fixes
+
+* Fix a timer bug and add timer tests ([d9c8465](https://github.com/atom/telemetry/commit/d9c8465))
+
+
+
 <a name="0.1.0"></a>
 # [0.1.0](https://github.com/atom/telemetry/compare/0.0.37...0.1.0) (2018-08-29)
 
