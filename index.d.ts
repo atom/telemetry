@@ -99,5 +99,8 @@ declare module "telemetry-github" {
      * Increment a counter.  This is used to track usage statistics.
      */
     incrementCounter(counterName: string): Promise<void>;
+
+    /** Helper method to create a new empty report for the current day */
+    createReport(): IMetrics;
   }
 }

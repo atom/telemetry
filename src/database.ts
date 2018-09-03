@@ -39,7 +39,6 @@ export default class StatsDatabase implements IStatsDatabase {
     report.metrics.customEvents.push(customEvent);
 
     await this.metrics.update(report);
-    report = await this.getCurrentMetrics();
   }
 
   public async incrementCounter(counterName: string): Promise<void> {
