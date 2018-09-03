@@ -36,18 +36,19 @@ const minutes = 60 * 1000;
 const hours = 60 * minutes;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
-const DefaultStatsReportIntervalInMs = hours * 24;
+const dayInMs = hours * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
 const DefaultInitialReportTimerInMs = minutes * 2;
 
-/** helper for getting the date, which we pass in so that we can mock
- * in unit tests.
- */
-const getISODate = () => new Date(Date.now()).toISOString();
+export const getYearMonthDay = (date: Date): number =>
+  parseInt(
+    `${("0" + date.getUTCFullYear()).slice(-4)}${("0" + date.getUTCMonth()).slice(-2)}${("0" + date.getUTCDate()).slice(
+      -2
+    )}`
+  );
 
 export class StatsStore {
-
   private get isEnabled(): boolean {
     return !this.optOut && (!this.isDevMode || this.trackInDevMode);
   }
@@ -75,24 +76,27 @@ export class StatsStore {
   private gitHubUser: string | undefined;
 
   private guid: string | undefined;
+  private database: IStatsDatabase;
 
   public constructor(
     appName: AppName,
     version: string,
     getAccessToken = () => "",
     private readonly settings: ISettings = new LocalStorage(),
-    private readonly database: IStatsDatabase = new StatsDatabase(getISODate),
+    private db?: IStatsDatabase,
     readonly configuration: IAppConfiguration = {
-      reportIntervalInMs: DefaultStatsReportIntervalInMs,
-      initialReportDelayInMs: DefaultInitialReportTimerInMs
+      initialReportDelayInMs: DefaultInitialReportTimerInMs,
     }
   ) {
     if (!this.settings) {
       this.settings = new LocalStorage();
     }
-    if (!this.database) {
-      this.database = new StatsDatabase(getISODate);
+
+    if (!db) {
+      db = new StatsDatabase(() => this.createReport());
     }
+    this.database = db;
+
     this.version = version;
     this.usagePath = USAGE_PATH + appName;
     this.getAccessToken = getAccessToken;
@@ -113,6 +117,13 @@ export class StatsStore {
 
   public setDevMode(isDevMode: boolean): void {
     this.isDevMode = isDevMode;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+    if (!this.isDevMode) {
+      this.timer = setTimeout(async () => this.maybeReportStats(), this.configuration.initialReportDelayInMs);
+    }
   }
 
   public setTrackInDevMode(track: boolean): void {
@@ -137,7 +148,9 @@ export class StatsStore {
   public async addCustomEvent(eventType: string, event: object) {
     await this.initialize();
 
-    if (!this.isEnabled) { return; }
+    if (!this.isEnabled) {
+      return;
+    }
 
     await this.database.addCustomEvent(eventType, event);
   }
@@ -148,7 +161,9 @@ export class StatsStore {
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
     await this.initialize();
 
-    if (!this.isEnabled) { return; }
+    if (!this.isEnabled) {
+      return;
+    }
 
     await this.database.addTiming(eventType, durationInMilliseconds, metadata);
   }
@@ -159,26 +174,35 @@ export class StatsStore {
   public async incrementCounter(counterName: string) {
     await this.initialize();
 
-    if (!this.isEnabled) { return; }
+    if (!this.isEnabled) {
+      return;
+    }
 
     await this.database.incrementCounter(counterName);
   }
 
-  public async reportStats(getDate: () => string) {
+  public async reportStats() {
     await this.initialize();
 
-    if (!this.isEnabled) { return; }
+    if (!this.isEnabled) {
+      return;
+    }
 
-    const stats = await this.getDailyStats(getDate);
+    const today = Date.now();
+    const stats = await this.getReportsBefore(new Date(today));
+
+    if (stats.length === 0) {
+      return;
+    }
 
     const response = await this.post(stats);
 
     if (response.statusCode !== 200) {
       throw new ReportError(response.statusCode);
     } else {
-      await this.settings.setItem(LastDailyStatsReportKey, Date.now().toString());
-      await this.database.clearData();
-      console.log("stats successfully reported");
+      await this.settings.setItem(LastDailyStatsReportKey, today.toString());
+      await this.database.clearData(new Date(today));
+      console.error("stats successfully reported");
     }
   }
 
@@ -204,26 +228,44 @@ export class StatsStore {
     }
     this.settings.setItem(HasSentOptInPingKey, "1");
 
-    console.log(`Opt ${direction} reported.`);
+    console.error(`Opt ${direction} reported.`);
   }
 
-  // public for testing purposes only
-  public async getDailyStats(getDate: () => string): Promise<IMetrics> {
+  async getReportsBefore(date?: Date): Promise<IMetrics[]> {
     await this.initialize();
 
-    const measures: any = {};
-    (await this.database.getCounters()).forEach((x, _, __) => measures[x.name] = x.count);
+    const reports = await this.database.getMetrics();
+    if (!date) {
+      return reports;
+    }
+    return reports.filter(x => getYearMonthDay(new Date(x.dimensions.date)) < getYearMonthDay(date)).map(x => {
+      x.dimensions.gitHubUser = this.gitHubUser;
+      return x;
+    });
+  }
 
+  async getCurrentReport(): Promise<IMetrics> {
+    await this.initialize();
+
+    const today = getYearMonthDay(new Date(Date.now()));
+    return this.getReportsBefore().then(reports => {
+      let report = reports.find(x => getYearMonthDay(new Date(x.dimensions.date)) === today) || this.createReport();
+      report.dimensions.gitHubUser = this.gitHubUser;
+      return report;
+    });
+  }
+
+  createReport(): IMetrics {
     return {
-      measures,
-      customEvents: await this.database.getCustomEvents(),
-      timings: await this.database.getTimings(),
+      measures: {},
+      customEvents: [],
+      timings: [],
       dimensions: {
         appVersion: this.version,
         platform: process.platform,
         guid: this.guid!,
         eventType: "usage",
-        date: getDate(),
+        date: new Date(Date.now()).toISOString(),
         language: process.env.LANG || "",
         gitHubUser: this.gitHubUser,
       },
@@ -244,7 +286,7 @@ export class StatsStore {
       protocol: USAGE_PROTOCOL,
       method: "POST",
       path: this.usagePath,
-      headers: requestHeaders
+      headers: requestHeaders,
     };
     if (USAGE_PORT) {
       options.port = USAGE_PORT;
@@ -271,7 +313,9 @@ export class StatsStore {
   }
 
   private async initialize(): Promise<void> {
-    if (this.guid) { return; }
+    if (this.guid) {
+      return;
+    }
     this.guid = await this.getGUID();
 
     const optOutValue = await this.settings.getItem(StatsOptOutKey);
@@ -308,13 +352,12 @@ export class StatsStore {
     }
 
     const now = Date.now();
-    const timeToNextReport = (this.configuration.reportIntervalInMs - (now - lastDate));
+    const timeToNextReport = dayInMs - (now - lastDate);
     return timeToNextReport < 0 ? 0 : timeToNextReport;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
   private async getTimer(): Promise<NodeJS.Timer> {
-
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = undefined;
@@ -328,11 +371,14 @@ export class StatsStore {
   }
 
   private async maybeReportStats(): Promise<void> {
+    if (!this.isEnabled) {
+      return;
+    }
     if (await this.hasReportingIntervalElapsed()) {
-      await this.reportStats(getISODate);
+      await this.reportStats();
     }
     this.timer = await this.getTimer();
-}
+  }
 
   private async getGUID(): Promise<string> {
     let guid = await this.settings.getItem(StatsGUIDKey);

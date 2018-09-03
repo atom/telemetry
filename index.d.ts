@@ -1,7 +1,5 @@
 declare module "telemetry-github" {
-
   export interface IAppConfiguration {
-    reportIntervalInMs: number;
     initialReportDelayInMs: number;
   }
 
@@ -12,35 +10,35 @@ declare module "telemetry-github" {
 
   export interface IDimensions {
     /** The app version. */
-    readonly appVersion: string;
+    appVersion: string;
 
     /** the platform */
-    readonly platform: string;
+    platform: string;
 
     /** The install ID. */
-    readonly guid: string;
+    guid: string;
 
-    /** The date the metrics were sent, in ISO-8601 format */
-    readonly date: string;
+    /** The date the metrics were recorded, in ISO-8601 format */
+    date: string;
 
     readonly eventType: "usage";
 
-    readonly language: string;
+    language: string;
 
-    readonly gitHubUser: string | undefined;
+    gitHubUser: string | undefined;
   }
 
   export interface IMetrics {
     dimensions: IDimensions;
     // metrics names are defined by the client and thus aren't knowable
     // at compile time here.
-    measures: object;
+    measures: any;
 
     // array of custom events that can be defined by the client
-    customEvents: object[];
+    customEvents: any[];
 
     // array of timing events
-    timings: object[];
+    timings: any[];
   }
 
   export interface ICounter {
@@ -51,12 +49,10 @@ declare module "telemetry-github" {
   export interface IStatsDatabase {
     close(): Promise<void>;
     incrementCounter(counterName: string): Promise<void>;
-    clearData(): Promise<void>;
-    getCounters(): Promise<ICounter[]>;
+    clearData(date: Date): Promise<void>;
+    getMetrics(): Promise<IMetrics[]>;
     addCustomEvent(eventType: string, customEvent: any): Promise<void>;
-    addTiming(eventType: string, durationInMilliseconds: number, metadata: object): Promise<void>;
-    getCustomEvents(): Promise<object[]>;
-    getTimings(): Promise<object[]>;
+    addTiming(eventType: string, durationInMilliseconds: number, metadata: any): Promise<void>;
   }
 
   export const enum AppName {
@@ -89,12 +85,12 @@ declare module "telemetry-github" {
     setTrackInDevMode(track: boolean): void;
 
     /** Shutdown the data store, if the backend supports it */
-    shutdown() : Promise<void>;
+    shutdown(): Promise<void>;
     /** Set whether the user has opted out of stats reporting. */
     setOptOut(optOut: boolean): Promise<void>;
     reportStats(getDate: () => string): Promise<void>;
 
-    addCustomEvent(eventType: string, event: object): Promise<void>;
+    addCustomEvent(eventType: string, event: any): Promise<void>;
     /**
      * Add timing data to the stats store, to be sent with the daily metrics requests.
      */
