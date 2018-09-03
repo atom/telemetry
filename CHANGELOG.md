@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.2.0"></a>
+# [0.2.0](https://github.com/atom/telemetry/compare/0.1.1...0.2.0) (2018-09-03)
+
+
+### Features
+
+* Timestamp daily reports and send all older reports in bulk ([8d2d5ae](https://github.com/atom/telemetry/commit/8d2d5ae))
+
+
+
 <a name="0.1.1"></a>
 ## [0.1.1](https://github.com/atom/telemetry/compare/0.1.0...0.1.1) (2018-08-29)
 

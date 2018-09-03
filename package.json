@@ -1,6 +1,6 @@
 {
   "name": "telemetry-github",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "telemetry for GitHub client apps",
   "repository": {
     "url": "https://github.com/atom/telemetry"
