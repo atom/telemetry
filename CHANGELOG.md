@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.2"></a>
+## [0.3.2](https://github.com/atom/telemetry/compare/0.3.1...0.3.2) (2018-09-04)
+
+
+### Bug Fixes
+
+* Make sure getYearMonthDay works correctly ([20a70d6](https://github.com/atom/telemetry/commit/20a70d6))
+
+
+
 <a name="0.3.1"></a>
 ## [0.3.1](https://github.com/atom/telemetry/compare/0.3.0...0.3.1) (2018-09-04)
 
