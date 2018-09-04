@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.2.3"></a>
+## [0.2.3](https://github.com/atom/telemetry/compare/0.2.2...0.2.3) (2018-09-04)
+
+
+### Bug Fixes
+
+* Make field names consistent with other telemetry apps ([f0d33ed](https://github.com/atom/telemetry/commit/f0d33ed))
+
+
+
 <a name="0.2.2"></a>
 ## [0.2.2](https://github.com/atom/telemetry/compare/0.2.1...0.2.2) (2018-09-07)
 
