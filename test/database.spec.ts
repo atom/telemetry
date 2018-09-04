@@ -32,7 +32,7 @@ const createReport = (): IMetrics => {
       guid: "GUID",
       eventType: "usage",
       date: getDate(),
-      language: "en-US",
+      lang: "en-US",
       gitHubUser: undefined,
     },
   };

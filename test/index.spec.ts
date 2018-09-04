@@ -65,7 +65,7 @@ describe("StatsStore", function() {
       guid: "",
       eventType: "usage",
       date: "",
-      language: "",
+      lang: "",
       gitHubUser: "",
     },
   });
@@ -87,7 +87,7 @@ describe("StatsStore", function() {
       guid: guid,
       eventType: "usage",
       date: new Date(Date.now()).toISOString(),
-      language: "lang",
+      lang: "lang",
       gitHubUser: "user",
     };
     return report;

@@ -23,7 +23,7 @@ declare module "telemetry-github" {
 
     readonly eventType: "usage";
 
-    language: string;
+    lang: string;
 
     gitHubUser: string | undefined;
   }

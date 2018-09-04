@@ -259,7 +259,7 @@ export class StatsStore {
         guid: this.guid!,
         eventType: "usage",
         date: new Date(Date.now()).toISOString(),
-        language: process.env.LANG || "",
+        lang: process.env.LANG || "",
         gitHubUser: this.gitHubUser,
       },
     };
