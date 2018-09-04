@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.2.4"></a>
+## [0.2.4](https://github.com/atom/telemetry/compare/0.2.3...0.2.4) (2018-09-04)
+
+
+### Bug Fixes
+
+* eventType is not a dimension ([cdbcb71](https://github.com/atom/telemetry/commit/cdbcb71))
+
+
+
 <a name="0.2.3"></a>
 ## [0.2.3](https://github.com/atom/telemetry/compare/0.2.2...0.2.3) (2018-09-04)
 
