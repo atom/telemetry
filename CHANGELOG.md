@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.0"></a>
+# [0.3.0](https://github.com/atom/telemetry/compare/0.2.4...0.3.0) (2018-09-04)
+
+
+### Features
+
+* Key reports by instance guid so that multiple instances of the same client won't trample each other ([c52ae4e](https://github.com/atom/telemetry/commit/c52ae4e))
+
+
+
 <a name="0.2.4"></a>
 ## [0.2.4](https://github.com/atom/telemetry/compare/0.2.3...0.2.4) (2018-09-04)
 
