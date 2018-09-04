@@ -1,5 +1,6 @@
 import { expect, assert } from "chai";
-import { AppName, HasSentOptInPingKey, LastDailyStatsReportKey, StatsOptOutKey, StatsStore } from "../src/index";
+import { AppName, HasSentOptInPingKey, LastDailyStatsReportKey, StatsOptOutKey,
+  StatsStore, getYearMonthDay } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -415,6 +416,12 @@ describe("StatsStore", function() {
     it("handles null gitHubUser", async function() {
       const event = await store.getCurrentReport();
       expect(event.dimensions.gitHubUser).to.be.undefined;
+    });
+  });
+  describe("getYearMonthDay", function() {
+    it("getYearMonthDay is UTC", async function() {
+      const n = getYearMonthDay(new Date("2018-09-04T00:27:57+01:00"));
+      assert.equal(n, 20180903);
     });
   });
 });
