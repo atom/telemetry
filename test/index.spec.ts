@@ -55,7 +55,7 @@ describe("StatsStore", function() {
   let clock: sinon.SinonFakeTimers;
   let guid: string;
 
-  let reportFunc: () => IMetrics = () => ({
+  const reportFunc: () => IMetrics = () => ({
     eventType: "usage",
     measures: {},
     customEvents: [],
@@ -70,7 +70,7 @@ describe("StatsStore", function() {
     },
   });
 
-  let cleanupStore = async function() {
+  const cleanupStore = async function() {
     try {
       (store.post as any).restore();
     } catch {
@@ -79,12 +79,12 @@ describe("StatsStore", function() {
     await store.shutdown();
   };
 
-  let createReport = function() {
-    let report = reportFunc();
+  const createReport = function() {
+    const report = reportFunc();
     report.dimensions = {
       appVersion: version,
       platform: "platform",
-      guid: guid,
+      guid,
       date: new Date(Date.now()).toISOString(),
       lang: "lang",
       gitHubUser: "user",
@@ -122,7 +122,7 @@ describe("StatsStore", function() {
       await cleanupStore();
 
       customStore = new StatsStore(AppName.Atom, version);
-      let reportStub = sinon.stub(customStore, "reportStats");
+      const reportStub = sinon.stub(customStore, "reportStats");
       shouldReportStub = sinon.stub(customStore as any, "hasReportingIntervalElapsed").callsFake(async () => true);
       clock.tick(2 * 60 * 1000);
 
@@ -135,7 +135,7 @@ describe("StatsStore", function() {
       await cleanupStore();
 
       customStore = new StatsStore(AppName.Atom, version);
-      let reportStub = sinon.stub(customStore, "reportStats");
+      const reportStub = sinon.stub(customStore, "reportStats");
       shouldReportStub = sinon.stub(customStore as any, "hasReportingIntervalElapsed").callsFake(async () => false);
       clock.tick(2 * 60 * 1000);
       // we need to yield the thread for the rest of the awaited calls to happen
@@ -150,7 +150,7 @@ describe("StatsStore", function() {
       customStore = new StatsStore(AppName.Atom, version, getAccessToken, undefined, undefined, {
         initialReportDelayInMs: 1000,
       });
-      let reportStub = sinon.stub(customStore, "reportStats");
+      const reportStub = sinon.stub(customStore, "reportStats");
 
       clock.tick(1000);
 
@@ -167,7 +167,7 @@ describe("StatsStore", function() {
       await cleanupStore();
 
       customStore = new StatsStore(AppName.Atom, version);
-      let reportStub = sinon.stub(customStore, "reportStats");
+      const reportStub = sinon.stub(customStore, "reportStats");
 
       // go forward a day
       clock.tick(dayInMs);
@@ -284,7 +284,7 @@ describe("StatsStore", function() {
       await store.reportStats();
       assert.deepEqual(fetchStub.args[0][0].headers, {
         "Content-Type": "application/json",
-        Authorization: `token ${ACCESS_TOKEN}`,
+        "Authorization": `token ${ACCESS_TOKEN}`,
       });
     });
     it("does not send the auth header if the auth header is falsy", async function() {

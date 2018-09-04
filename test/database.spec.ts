@@ -120,18 +120,18 @@ describe("database", async function() {
   describe("getCounters", function() {
     it("gets an empty object if counters do not exist", async function() {
       await database.addCustomEvent(openEventType, { grammar });
-      let counters = (await database.getMetrics())[0].measures;
+      const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, {});
     });
     it("gets a single counter if it exists", async function() {
       await database.incrementCounter(counterName);
-      let counters = (await database.getMetrics())[0].measures;
+      const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1 });
     });
     it("gets all counters that exist", async function() {
       await database.incrementCounter(counterName);
       await database.incrementCounter("foo");
-      let counters = (await database.getMetrics())[0].measures;
+      const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1, foo: 1 });
     });
   });
@@ -139,8 +139,8 @@ describe("database", async function() {
     it("clears all", async function() {
       await database.incrementCounter(counterName);
 
-      let actual = await database.getMetrics();
-      let expected = createReport();
+      const actual = await database.getMetrics();
+      const expected = createReport();
       expected.measures[counterName] = 1;
       assert.deepEqual(actual, [expected]);
 
@@ -148,7 +148,7 @@ describe("database", async function() {
       const now = new Date(Date.now());
       await database.clearData(now);
 
-      let metrics = await database.getMetrics();
+      const metrics = await database.getMetrics();
       assert.deepEqual(metrics, []);
     });
     it("clears old records", async function() {
@@ -158,7 +158,7 @@ describe("database", async function() {
 
       let now = new Date(Date.now());
       let metrics = await database.getMetrics();
-      let expected = createReport();
+      const expected = createReport();
       expected.measures[counterName] = 1;
       expected.customEvents.push(getOpenEvent());
       expected.timings.push(getTiming("load", 100, { meta: "data" }));

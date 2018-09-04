@@ -45,7 +45,8 @@ export const getYearMonthDay = (date: Date): number =>
   parseInt(
     `${("0" + date.getUTCFullYear()).slice(-4)}${("0" + date.getUTCMonth()).slice(-2)}${("0" + date.getUTCDate()).slice(
       -2
-    )}`
+    )}`,
+    10
   );
 
 export class StatsStore {
@@ -243,7 +244,7 @@ export class StatsStore {
   async getCurrentReport(): Promise<IMetrics> {
     await this.initialize();
 
-    let report = (await this.database.getMetricsForDate(new Date(Date.now()))) || this.createReport();
+    const report = (await this.database.getMetricsForDate(new Date(Date.now()))) || this.createReport();
     report.dimensions.gitHubUser = this.gitHubUser;
     return report;
   }

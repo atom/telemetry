@@ -1,9 +1,8 @@
 import * as loki from "lokijs";
-import { MultipleCounterError } from "./errors";
 import { IStatsDatabase, IMetrics } from "telemetry-github";
 import { getYearMonthDay } from ".";
 
-interface DBEntry {
+interface IDBEntry {
   date: number;
   metrics: IMetrics;
 }
@@ -13,7 +12,7 @@ const now = () => new Date(Date.now()).toISOString();
 export default class StatsDatabase implements IStatsDatabase {
   private db: loki;
 
-  private metrics: Collection<DBEntry>;
+  private metrics: Collection<IDBEntry>;
 
   public constructor(private createCurrentReport: () => IMetrics) {
     this.db = new loki("stats-database");
@@ -33,7 +32,7 @@ export default class StatsDatabase implements IStatsDatabase {
   }
 
   public async addCustomEvent(eventType: string, customEvent: any): Promise<void> {
-    let report = await this.getCurrentMetrics();
+    const report = await this.getCurrentMetrics();
     customEvent.date = now();
     customEvent.eventType = eventType;
     report.metrics.customEvents.push(customEvent);
@@ -80,20 +79,19 @@ export default class StatsDatabase implements IStatsDatabase {
 
   async getMetricsForDate(date: Date): Promise<IMetrics | undefined> {
     const today = getYearMonthDay(date);
-    let report = await this.metrics.findOne({ date: today });
+    const report = await this.metrics.findOne({ date: today });
     if (report) {
       return report.metrics;
     }
     return;
   }
 
-  private async getCurrentMetrics(): Promise<DBEntry> {
-    const now = new Date(Date.now());
-    const today = getYearMonthDay(now);
+  private async getCurrentMetrics(): Promise<IDBEntry> {
+    const today = getYearMonthDay(new Date(Date.now()));
     let report = await this.metrics.findOne({ date: today });
 
     if (!report) {
-      let newReport = this.createCurrentReport();
+      const newReport = this.createCurrentReport();
       report = (await this.metrics.insertOne({ date: today, metrics: newReport })) || null;
     }
     return report!;
