@@ -4,6 +4,7 @@ import { getYearMonthDay } from ".";
 
 interface IDBEntry {
   date: number;
+  instanceId: string;
   metrics: IMetrics;
 }
 
@@ -31,8 +32,8 @@ export default class StatsDatabase implements IStatsDatabase {
     });
   }
 
-  public async addCustomEvent(eventType: string, customEvent: any): Promise<void> {
-    const report = await this.getCurrentMetrics();
+  public async addCustomEvent(instanceId: string, eventType: string, customEvent: any): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
     customEvent.date = now();
     customEvent.eventType = eventType;
     report.metrics.customEvents.push(customEvent);
@@ -40,8 +41,8 @@ export default class StatsDatabase implements IStatsDatabase {
     await this.metrics.update(report);
   }
 
-  public async incrementCounter(counterName: string): Promise<void> {
-    const report = await this.getCurrentMetrics();
+  public async incrementCounter(instanceId: string, counterName: string): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
 
     if (!report.metrics.measures.hasOwnProperty(counterName)) {
       report.metrics.measures[counterName] = 0;
@@ -50,8 +51,13 @@ export default class StatsDatabase implements IStatsDatabase {
     await this.metrics.update(report);
   }
 
-  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}): Promise<void> {
-    const report = await this.getCurrentMetrics();
+  public async addTiming(
+    instanceId: string,
+    eventType: string,
+    durationInMilliseconds: number,
+    metadata = {}
+  ): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
     report.metrics.timings.push({ eventType, durationInMilliseconds, metadata, date: now() });
     await this.metrics.update(report);
   }
@@ -77,22 +83,17 @@ export default class StatsDatabase implements IStatsDatabase {
     }
   }
 
-  async getMetricsForDate(date: Date): Promise<IMetrics | undefined> {
-    const today = getYearMonthDay(date);
-    const report = await this.metrics.findOne({ date: today });
-    if (report) {
-      return report.metrics;
-    }
-    return;
+  public async getCurrentMetrics(instanceId: string): Promise<IMetrics> {
+    return this.getCurrentDBEntry(instanceId).then(x => x.metrics);
   }
 
-  private async getCurrentMetrics(): Promise<IDBEntry> {
-    const today = getYearMonthDay(new Date(Date.now()));
-    let report = await this.metrics.findOne({ date: today });
+  private async getCurrentDBEntry(instanceId: string): Promise<IDBEntry> {
+    let report = await this.metrics.findOne({ instanceId });
 
     if (!report) {
       const newReport = this.createCurrentReport();
-      report = (await this.metrics.insertOne({ date: today, metrics: newReport })) || null;
+      const today = getYearMonthDay(new Date(Date.now()));
+      report = (await this.metrics.insertOne({ date: today, instanceId, metrics: newReport })) || null;
     }
     return report!;
   }

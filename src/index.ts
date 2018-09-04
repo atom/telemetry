@@ -79,6 +79,8 @@ export class StatsStore {
   private guid: string | undefined;
   private database: IStatsDatabase;
 
+  private instanceId: string;
+
   public constructor(
     appName: AppName,
     version: string,
@@ -89,6 +91,8 @@ export class StatsStore {
       initialReportDelayInMs: DefaultInitialReportTimerInMs,
     }
   ) {
+    this.instanceId = uuid();
+
     if (!this.settings) {
       this.settings = new LocalStorage();
     }
@@ -153,7 +157,7 @@ export class StatsStore {
       return;
     }
 
-    await this.database.addCustomEvent(eventType, event);
+    await this.database.addCustomEvent(this.instanceId, eventType, event);
   }
 
   /**
@@ -166,7 +170,7 @@ export class StatsStore {
       return;
     }
 
-    await this.database.addTiming(eventType, durationInMilliseconds, metadata);
+    await this.database.addTiming(this.instanceId, eventType, durationInMilliseconds, metadata);
   }
 
   /**
@@ -179,7 +183,7 @@ export class StatsStore {
       return;
     }
 
-    await this.database.incrementCounter(counterName);
+    await this.database.incrementCounter(this.instanceId, counterName);
   }
 
   public async reportStats() {
@@ -190,18 +194,27 @@ export class StatsStore {
     }
 
     const today = Date.now();
+
+    // this is a non-foolproof attempt at avoiding multiple instances of the telemetry client
+    // from submitting the same reports. If their timers are running at the same time, this will
+    // of course race, but if they're more than a second apart this should be enough (and most likely they will be)
+    const lastDateString = (await this.settings.getItem(LastDailyStatsReportKey)) || new Date().toString();
+    await this.settings.setItem(LastDailyStatsReportKey, today.toString());
+
     const stats = await this.getReportsBefore(new Date(today));
 
     if (stats.length === 0) {
+      // no reports, we're done here
       return;
     }
 
     const response = await this.post(stats);
 
     if (response.statusCode !== 200) {
+      // restore the original last submission time so we can try again
+      await this.settings.setItem(LastDailyStatsReportKey, lastDateString);
       throw new ReportError(response.statusCode);
     } else {
-      await this.settings.setItem(LastDailyStatsReportKey, today.toString());
       await this.database.clearData(new Date(today));
       console.error("stats successfully reported");
     }
@@ -244,7 +257,7 @@ export class StatsStore {
   async getCurrentReport(): Promise<IMetrics> {
     await this.initialize();
 
-    const report = (await this.database.getMetricsForDate(new Date(Date.now()))) || this.createReport();
+    const report = await this.database.getCurrentMetrics(this.instanceId);
     report.dimensions.gitHubUser = this.gitHubUser;
     return report;
   }
@@ -335,12 +348,7 @@ export class StatsStore {
   }
 
   private async getTimeToNextReport(): Promise<number> {
-    const lastDateString = await this.settings.getItem(LastDailyStatsReportKey);
-    let lastDate = 0;
-    if (lastDateString && lastDateString.length > 0) {
-      lastDate = parseInt(lastDateString, 10);
-    }
-
+    let lastDate = parseInt((await this.settings.getItem(LastDailyStatsReportKey)) || new Date().toString(), 10);
     if (isNaN(lastDate)) {
       lastDate = 0;
     }

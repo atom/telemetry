@@ -2,6 +2,7 @@ import { assert } from "chai";
 import StatsDatabase from "../src/database";
 import { IMetrics } from "telemetry-github";
 import sinon = require("sinon");
+import { uuid } from "../src/uuid";
 
 const getDate = () => new Date(Date.now()).toISOString();
 
@@ -41,9 +42,11 @@ const createReport = (): IMetrics => {
 describe("database", async function() {
   const counterName = "commits";
   let clock: sinon.SinonFakeTimers;
+  let instanceId: string;
 
   let database: StatsDatabase;
   beforeEach(async function() {
+    instanceId = uuid();
     clock = sinon.useFakeTimers();
     database = new StatsDatabase(createReport);
   });
@@ -64,13 +67,13 @@ describe("database", async function() {
   // So just make a new object in every test when you're inserting and move on with your life.
   describe("custom event methods", function() {
     it("adds and gets a single event", async function() {
-      await database.addCustomEvent(openEventType, { grammar });
+      await database.addCustomEvent(instanceId, openEventType, { grammar });
       const events = (await database.getMetrics())[0].customEvents;
       assert.deepEqual(events[0], getOpenEvent());
     });
     it("adds multiple events", async function() {
-      await database.addCustomEvent(openEventType, { grammar });
-      await database.addCustomEvent(deprecateEventType, { message });
+      await database.addCustomEvent(instanceId, openEventType, { grammar });
+      await database.addCustomEvent(instanceId, deprecateEventType, { message });
       const events = (await database.getMetrics())[0].customEvents;
       assert.deepEqual(events, [getOpenEvent(), getDeprecateEvent()]);
     });
@@ -80,7 +83,7 @@ describe("database", async function() {
       const eventType = "load";
       const durationInMilliseconds = 100;
       const metadata = { meta: "data" };
-      await database.addTiming(eventType, durationInMilliseconds, metadata);
+      await database.addTiming(instanceId, eventType, durationInMilliseconds, metadata);
 
       const timings = (await database.getMetrics())[0].timings;
       assert.deepEqual(timings[0], { eventType, durationInMilliseconds, metadata, date: getDate() });
@@ -90,8 +93,8 @@ describe("database", async function() {
       const durationInMilliseconds1 = 100;
       const durationInMilliseconds2 = 200;
       const metadata = { meta: "data" };
-      await database.addTiming(eventType, durationInMilliseconds1, metadata);
-      await database.addTiming(eventType, durationInMilliseconds2, metadata);
+      await database.addTiming(instanceId, eventType, durationInMilliseconds1, metadata);
+      await database.addTiming(instanceId, eventType, durationInMilliseconds2, metadata);
 
       const timings = (await database.getMetrics())[0].timings;
       assert.deepEqual(timings, [
@@ -104,40 +107,40 @@ describe("database", async function() {
     it("adds a new counter if it does not exist", async function() {
       const metrics = await database.getMetrics();
       assert.deepEqual(metrics, []);
-      await database.incrementCounter(counterName);
+      await database.incrementCounter(instanceId, counterName);
       const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1 });
     });
     it("increments an existing counter", async function() {
-      await database.incrementCounter(counterName);
+      await database.incrementCounter(instanceId, counterName);
       let counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1 });
-      await database.incrementCounter(counterName);
+      await database.incrementCounter(instanceId, counterName);
       counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 2 });
     });
   });
   describe("getCounters", function() {
     it("gets an empty object if counters do not exist", async function() {
-      await database.addCustomEvent(openEventType, { grammar });
+      await database.addCustomEvent(instanceId, openEventType, { grammar });
       const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, {});
     });
     it("gets a single counter if it exists", async function() {
-      await database.incrementCounter(counterName);
+      await database.incrementCounter(instanceId, counterName);
       const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1 });
     });
     it("gets all counters that exist", async function() {
-      await database.incrementCounter(counterName);
-      await database.incrementCounter("foo");
+      await database.incrementCounter(instanceId, counterName);
+      await database.incrementCounter(instanceId, "foo");
       const counters = (await database.getMetrics())[0].measures;
       assert.deepEqual(counters, { [counterName]: 1, foo: 1 });
     });
   });
   describe("clearData", function() {
     it("clears all", async function() {
-      await database.incrementCounter(counterName);
+      await database.incrementCounter(instanceId, counterName);
 
       const actual = await database.getMetrics();
       const expected = createReport();
@@ -152,9 +155,9 @@ describe("database", async function() {
       assert.deepEqual(metrics, []);
     });
     it("clears old records", async function() {
-      await database.incrementCounter(counterName);
-      await database.addCustomEvent(openEventType, { grammar });
-      await database.addTiming("load", 100, { meta: "data" });
+      await database.incrementCounter(instanceId, counterName);
+      await database.addCustomEvent(instanceId, openEventType, { grammar });
+      await database.addTiming(instanceId, "load", 100, { meta: "data" });
 
       let now = new Date(Date.now());
       let metrics = await database.getMetrics();

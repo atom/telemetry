@@ -48,13 +48,12 @@ declare module "telemetry-github" {
 
   export interface IStatsDatabase {
     close(): Promise<void>;
-    incrementCounter(counterName: string): Promise<void>;
+    incrementCounter(instanceId: string, counterName: string): Promise<void>;
     clearData(date: Date): Promise<void>;
-    addCustomEvent(eventType: string, customEvent: any): Promise<void>;
-    addTiming(eventType: string, durationInMilliseconds: number, metadata: any): Promise<void>;
-
+    addCustomEvent(instanceId: string, eventType: string, customEvent: any): Promise<void>;
+    addTiming(instanceId: string, eventType: string, durationInMilliseconds: number, metadata: any): Promise<void>;
     getMetrics(beforeDate?: Date): Promise<IMetrics[]>;
-    getMetricsForDate(date: Date): Promise<IMetrics | undefined>;
+    getCurrentMetrics(instanceId: string): Promise<IMetrics>;
   }
 
   export const enum AppName {

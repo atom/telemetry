@@ -66,7 +66,7 @@ describe("StatsStore", function() {
       guid: "",
       date: "",
       lang: "",
-      gitHubUser: "",
+      gitHubUser: undefined,
     },
   });
 
@@ -87,7 +87,7 @@ describe("StatsStore", function() {
       guid,
       date: new Date(Date.now()).toISOString(),
       lang: "lang",
-      gitHubUser: "user",
+      gitHubUser: undefined,
     };
     return report;
   };
@@ -223,6 +223,38 @@ describe("StatsStore", function() {
 
       // event should only be sent the first time even though we call report stats
       sinon.assert.callCount(postStub, 1);
+    });
+    it("resets stats after sending", async function() {
+      postStub.resolves(POST_SUCCESS);
+      let metrics = await store.getCurrentReport();
+      assert.deepEqual(metrics, fakeEvent);
+      clock.tick(dayInMs);
+      await store.reportStats();
+
+      // counters should be cleared
+      metrics = await store.getCurrentReport();
+      assert.deepEqual(metrics, createReport());
+    });
+    it("saves user if set", async function() {
+      postStub.resolves(POST_SUCCESS);
+      let metrics = await store.getCurrentReport();
+      assert.deepEqual(metrics, fakeEvent);
+
+      store.setGitHubUser("theuser");
+      let event = fakeEvent;
+      event.dimensions.gitHubUser = "theuser";
+
+      clock.tick(dayInMs);
+      await store.reportStats();
+
+      sinon.assert.calledWith(postStub, [event]);
+      assert.deepEqual(postStub.args[0][0], [event]);
+
+      // counters should be cleared
+      metrics = await store.getCurrentReport();
+      event = createReport();
+      event.dimensions.gitHubUser = "theuser";
+      assert.deepEqual(metrics, event);
     });
   });
   describe("addTimer", async function() {
