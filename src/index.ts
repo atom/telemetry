@@ -43,7 +43,7 @@ const DefaultInitialReportTimerInMs = minutes * 2;
 
 export const getYearMonthDay = (date: Date): number =>
   parseInt(
-    `${("0" + date.getUTCFullYear()).slice(-4)}${("0" + date.getUTCMonth()).slice(-2)}${("0" + date.getUTCDate()).slice(
+    `${date.getUTCFullYear()}${("0" + date.getUTCMonth()+1).slice(-2)}${("0" + date.getUTCDate()).slice(
       -2
     )}`,
     10

@@ -1,4 +1,5 @@
-declare module "telemetry-github" {
+declare namespace TelemetryGitHub {
+
   export interface IAppConfiguration {
     initialReportDelayInMs: number;
   }
@@ -104,4 +105,10 @@ declare module "telemetry-github" {
     /** Helper method to create a new empty report for the current day */
     createReport(): IMetrics;
   }
+
+  export function getYearMonthDay(date: Date): number;
+}
+
+declare module "telemetry-github" {
+  export = TelemetryGitHub;
 }
