@@ -23,6 +23,7 @@ const getTiming = (eventType: string, durationInMilliseconds: number, metadata: 
 
 const createReport = (): IMetrics => {
   return {
+    eventType: "usage",
     measures: {},
     customEvents: [],
     timings: [],
@@ -30,7 +31,6 @@ const createReport = (): IMetrics => {
       appVersion: "1.0",
       platform: process.platform,
       guid: "GUID",
-      eventType: "usage",
       date: getDate(),
       lang: "en-US",
       gitHubUser: undefined,

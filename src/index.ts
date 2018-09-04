@@ -250,6 +250,7 @@ export class StatsStore {
 
   createReport(): IMetrics {
     return {
+      eventType: "usage",
       measures: {},
       customEvents: [],
       timings: [],
@@ -257,7 +258,6 @@ export class StatsStore {
         appVersion: this.version,
         platform: process.platform,
         guid: this.guid!,
-        eventType: "usage",
         date: new Date(Date.now()).toISOString(),
         lang: process.env.LANG || "",
         gitHubUser: this.gitHubUser,

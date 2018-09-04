@@ -21,14 +21,14 @@ declare module "telemetry-github" {
     /** The date the metrics were recorded, in ISO-8601 format */
     date: string;
 
-    readonly eventType: "usage";
-
     lang: string;
 
     gitHubUser: string | undefined;
   }
 
   export interface IMetrics {
+    readonly eventType: "usage";
+
     dimensions: IDimensions;
     // metrics names are defined by the client and thus aren't knowable
     // at compile time here.

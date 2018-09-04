@@ -56,6 +56,7 @@ describe("StatsStore", function() {
   let guid: string;
 
   let reportFunc: () => IMetrics = () => ({
+    eventType: "usage",
     measures: {},
     customEvents: [],
     timings: [],
@@ -63,7 +64,6 @@ describe("StatsStore", function() {
       appVersion: "",
       platform: "",
       guid: "",
-      eventType: "usage",
       date: "",
       lang: "",
       gitHubUser: "",
@@ -85,7 +85,6 @@ describe("StatsStore", function() {
       appVersion: version,
       platform: "platform",
       guid: guid,
-      eventType: "usage",
       date: new Date(Date.now()).toISOString(),
       lang: "lang",
       gitHubUser: "user",
