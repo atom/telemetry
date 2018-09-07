@@ -234,11 +234,7 @@ export class StatsStore {
   async getReportsBefore(date?: Date): Promise<IMetrics[]> {
     await this.initialize();
 
-    const reports = await this.database.getMetrics();
-    if (!date) {
-      return reports;
-    }
-    return reports.filter(x => getYearMonthDay(new Date(x.dimensions.date)) < getYearMonthDay(date)).map(x => {
+    return (await this.database.getMetrics(date)).map(x => {
       x.dimensions.gitHubUser = this.gitHubUser;
       return x;
     });
@@ -247,12 +243,9 @@ export class StatsStore {
   async getCurrentReport(): Promise<IMetrics> {
     await this.initialize();
 
-    const today = getYearMonthDay(new Date(Date.now()));
-    return this.getReportsBefore().then(reports => {
-      let report = reports.find(x => getYearMonthDay(new Date(x.dimensions.date)) === today) || this.createReport();
-      report.dimensions.gitHubUser = this.gitHubUser;
-      return report;
-    });
+    let report = (await this.database.getMetricsForDate(new Date(Date.now()))) || this.createReport();
+    report.dimensions.gitHubUser = this.gitHubUser;
+    return report;
   }
 
   createReport(): IMetrics {

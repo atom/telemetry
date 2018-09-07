@@ -50,9 +50,11 @@ declare module "telemetry-github" {
     close(): Promise<void>;
     incrementCounter(counterName: string): Promise<void>;
     clearData(date: Date): Promise<void>;
-    getMetrics(): Promise<IMetrics[]>;
     addCustomEvent(eventType: string, customEvent: any): Promise<void>;
     addTiming(eventType: string, durationInMilliseconds: number, metadata: any): Promise<void>;
+
+    getMetrics(beforeDate?: Date): Promise<IMetrics[]>;
+    getMetricsForDate(date: Date): Promise<IMetrics | undefined>;
   }
 
   export const enum AppName {

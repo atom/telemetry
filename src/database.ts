@@ -69,8 +69,22 @@ export default class StatsDatabase implements IStatsDatabase {
     }
   }
 
-  public async getMetrics(): Promise<IMetrics[]> {
-    return this.metrics.find().map(x => x.metrics);
+  public async getMetrics(beforeDate?: Date): Promise<IMetrics[]> {
+    if (beforeDate) {
+      const today = getYearMonthDay(beforeDate);
+      return this.metrics.find({ date: { $lt: today } }).map(x => x.metrics);
+    } else {
+      return this.metrics.find().map(x => x.metrics);
+    }
+  }
+
+  async getMetricsForDate(date: Date): Promise<IMetrics | undefined> {
+    const today = getYearMonthDay(date);
+    let report = await this.metrics.findOne({ date: today });
+    if (report) {
+      return report.metrics;
+    }
+    return;
   }
 
   private async getCurrentMetrics(): Promise<DBEntry> {
