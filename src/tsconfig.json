@@ -11,13 +11,11 @@
     "sourceMap": true,
     "strict": true,
     "strictNullChecks": true,
-    "outDir": "./lib",
+    "outDir": "../lib",
     "rootDir": "./"
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "lib",
+  "files": [
+    "../index.d.ts"
   ],
   "compileOnSave": true
 }

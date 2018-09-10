@@ -60,3 +60,4 @@ typings/
 out/
 lib/
 .vscode/
+*.lcov
