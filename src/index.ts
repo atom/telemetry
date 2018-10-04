@@ -1,9 +1,27 @@
-import { getGUID } from "./uuid";
+import { IStatsDatabase, ISettings, IMetrics, IAppConfiguration } from "telemetry-github";
+import { uuid } from "./uuid";
+import { LocalStorage } from "./storage";
 import StatsDatabase from "./database";
+import { IncomingMessage, RequestOptions } from "http";
+import * as https from "https";
+import { ReportError, PingError } from "./errors";
+
+export const enum AppName {
+  Atom = "atom",
+  VSCode = "vscode",
+}
 
 // if you're running a local instance of central, use
-// "http://localhost:4000/api/usage/" instead.
-const baseUsageApi = "https://central.github.com/api/usage/";
+// const USAGE_HOST = 'localhost';
+// const USAGE_PROTOCOL = 'http:'
+// const USAGE_PORT = '4000'
+const USAGE_HOST = "central.github.com";
+const USAGE_PROTOCOL = "https:";
+const USAGE_PORT: string | undefined = undefined;
+
+const USAGE_PATH = "/api/usage/";
+
+export const StatsGUIDKey = "stats-guid";
 
 export const LastDailyStatsReportKey = "last-daily-stats-report";
 
@@ -14,83 +32,41 @@ export const StatsOptOutKey = "stats-opt-out";
 export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
 /** milliseconds in an hour (for readability, dawg) */
-const hours = 60 * 60 * 1000;
+const minutes = 60 * 1000;
+const hours = 60 * minutes;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
-export const DailyStatsReportIntervalInMs = hours * 24;
+const dayInMs = hours * 24;
 
 /** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopIntervalInMs = hours * 4;
+const DefaultInitialReportTimerInMs = minutes * 2;
 
-interface IDimensions {
-  /** The app version. */
-  readonly appVersion: string;
-
-  /** the platform */
-  readonly platform: string;
-
-  /** The install ID. */
-  readonly guid: string;
-
-  /** The date the metrics were sent, in ISO-8601 format */
-  readonly date: string;
-
-  readonly eventType: "usage";
-
-  readonly language: string;
-
-  readonly gitHubUser: string | null;
-}
-
-export interface IMetrics {
-  dimensions: IDimensions;
-  // metrics names are defined by the client and thus aren't knowable
-  // at compile time here.
-  measures: object;
-
-  // array of custom events that can be defined by the client
-  customEvents: object[];
-
-  // array of timing events
-  timings: object[];
-}
-
-/** The goal is for this package to be app-agnostic so we can add
- * other editors in the future.
- */
-export enum AppName {
-  Atom = "atom",
-}
-
-/** helper for getting the date, which we pass in so that we can mock
- * in unit tests.
- */
-const getISODate = () => new Date(Date.now()).toISOString();
+export const getYearMonthDay = (date: Date): number =>
+  parseInt(
+    `${date.getUTCFullYear()}${("0" + (date.getUTCMonth() + 1)).slice(-2)}${("0" + date.getUTCDate()).slice(
+      -2
+    )}`,
+    10
+  );
 
 export class StatsStore {
-
-  private timer: NodeJS.Timer;
+  private get isEnabled(): boolean {
+    return !this.optOut && (!this.isDevMode || this.trackInDevMode);
+  }
+  private timer: NodeJS.Timer | undefined;
 
   /** Has the user opted out of stats reporting? */
-  private optOut: boolean;
+  private optOut: boolean = false;
 
   /** api for calling central with our stats */
-  private appUrl: string;
+  private usagePath: string;
 
   /** which version are we running, dawg */
   private version: string;
 
-  /** is electron app running in development mode?
-   * There isn't currently a consistent way of programmatically determining if an app
-   * is in dev mode that works in Desktop, Atom, and vscode.
-   * Todo: use Electron's new api to determine whether we are in dev mode, once
-   * all the clients using `telemetry` are on. Electron versions that support this api.
-   * https://github.com/electron/electron/issues/7714
-   */
-  private isDevMode: boolean;
-
-  /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database = new StatsDatabase(getISODate);
+  /** is app running in development mode? */
+  private isDevMode: boolean = false;
+  private trackInDevMode: boolean = false;
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -98,29 +74,45 @@ export class StatsStore {
    */
   private getAccessToken: () => string;
 
-  private gitHubUser: string | null;
+  private gitHubUser: string | undefined;
 
-  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken = () => "") {
+  private guid: string | undefined;
+  private database: IStatsDatabase;
+
+  private instanceId: string;
+
+  public constructor(
+    appName: AppName,
+    version: string,
+    getAccessToken = () => "",
+    private readonly settings: ISettings = new LocalStorage(),
+    private db?: IStatsDatabase,
+    readonly configuration: IAppConfiguration = {
+      initialReportDelayInMs: DefaultInitialReportTimerInMs,
+    }
+  ) {
+    this.instanceId = uuid();
+
+    if (!this.settings) {
+      this.settings = new LocalStorage();
+    }
+
+    if (!db) {
+      db = new StatsDatabase(() => this.createReport());
+    }
+    this.database = db;
+
     this.version = version;
-    this.appUrl = baseUsageApi + appName;
-    const optOutValue = localStorage.getItem(StatsOptOutKey);
-
-    this.isDevMode = isDevMode;
+    this.usagePath = USAGE_PATH + appName;
     this.getAccessToken = getAccessToken;
-    this.gitHubUser = null;
+    this.timer = setTimeout(async () => this.maybeReportStats(), this.configuration.initialReportDelayInMs);
+  }
 
-    this.timer = this.getTimer(ReportingLoopIntervalInMs);
-
-    if (optOutValue) {
-      this.optOut = !!parseInt(optOutValue, 10);
-
-      // If the user has set an opt out value but we haven't sent the ping yet,
-      // give it a shot now.
-      if (!localStorage.getItem(HasSentOptInPingKey)) {
-        this.sendOptInStatusPing(!this.optOut);
-      }
-    } else {
-      this.optOut = false;
+  public async shutdown(): Promise<void> {
+    this.database.close();
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
     }
   }
 
@@ -128,180 +120,274 @@ export class StatsStore {
     this.gitHubUser = gitHubUser;
   }
 
+  public setDevMode(isDevMode: boolean): void {
+    this.isDevMode = isDevMode;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+    if (!this.isDevMode) {
+      this.timer = setTimeout(async () => this.maybeReportStats(), this.configuration.initialReportDelayInMs);
+    }
+  }
+
+  public setTrackInDevMode(track: boolean): void {
+    this.trackInDevMode = track;
+  }
+
   /** Set whether the user has opted out of stats reporting. */
   public async setOptOut(optOut: boolean): Promise<void> {
+    await this.initialize();
+
     const changed = this.optOut !== optOut;
 
     this.optOut = optOut;
 
-    localStorage.setItem(StatsOptOutKey, optOut ? "1" : "0");
+    await this.settings.setItem(StatsOptOutKey, optOut ? "1" : "0");
 
-    if (changed) {
+    if (changed && (!this.isDevMode || this.trackInDevMode)) {
       await this.sendOptInStatusPing(!optOut);
     }
   }
 
-  public async reportStats(getDate: () => string) {
-    if (this.optOut || this.isDevMode) {
-      return;
-    }
-    const stats = await this.getDailyStats(getDate);
-
-    try {
-      const response = await this.post(stats);
-      if (response.status !== 200) {
-        throw new Error(`Stats reporting failure: ${response.status})`);
-      } else {
-        await localStorage.setItem(LastDailyStatsReportKey, Date.now().toString());
-        await this.database.clearData();
-        console.log("stats successfully reported");
-      }
-    } catch (err) {
-      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
-      // so we have some kind of visibility into how often things are failing.
-      console.log(err);
-    }
-  }
-
-  /* send a ping to indicate that the user has changed their opt-in preferences.
-  * public for testing purposes only.
-  */
-  public async sendOptInStatusPing(optIn: boolean): Promise<void> {
-    if (this.isDevMode) {
-      return;
-    }
-    const direction = optIn ? "in" : "out";
-    try {
-      const response = await this.post({
-        eventType: "ping",
-        dimensions: {
-          optIn,
-        },
-      });
-      if (response.status !== 200) {
-        throw new Error(`Error sending opt in ping: ${response.status}`);
-      }
-      localStorage.setItem(HasSentOptInPingKey, "1");
-
-      console.log(`Opt ${direction} reported.`);
-    } catch (err) {
-      // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
-      // so we have some kind of visibility into how often things are failing.
-      console.log(`Error reporting opt ${direction}`, err);
-    }
-  }
-
-  // public for testing purposes only
-  public async getDailyStats(getDate: () => string): Promise<IMetrics> {
-    return {
-      measures: await this.database.getCounters(),
-      customEvents: await this.database.getCustomEvents(),
-      timings: await this.database.getTimings(),
-      dimensions: {
-        appVersion: this.version,
-        platform: process.platform,
-        guid: getGUID(),
-        eventType: "usage",
-        date: getDate(),
-        language: process.env.LANG || "",
-        gitHubUser: this.gitHubUser,
-      },
-    };
-  }
-
   public async addCustomEvent(eventType: string, event: object) {
-    await this.database.addCustomEvent(eventType, event);
+    await this.initialize();
+
+    if (!this.isEnabled) {
+      return;
+    }
+
+    await this.database.addCustomEvent(this.instanceId, eventType, event);
   }
 
   /**
    * Add timing data to the stats store, to be sent with the daily metrics requests.
    */
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
-    // don't increment in dev mode because localStorage
-    // is shared across dev and non dev windows and there's
-    // no way to keep dev and non-dev metrics separate.
-    // don't increment if the user has opted out, because
-    // we want to respect user privacy.
-    if (this.isDevMode || this.optOut) {
+    await this.initialize();
+
+    if (!this.isEnabled) {
       return;
     }
-    await this.database.addTiming(eventType, durationInMilliseconds, metadata);
+
+    await this.database.addTiming(this.instanceId, eventType, durationInMilliseconds, metadata);
   }
 
   /**
    * Increment a counter.  This is used to track usage statistics.
    */
   public async incrementCounter(counterName: string) {
-    // don't increment in dev mode because localStorage
-    // is shared across dev and non dev windows and there's
-    // no way to keep dev and non-dev metrics separate.
-    // don't increment if the user has opted out, because
-    // we want to respect user privacy.
-    if (this.isDevMode || this.optOut) {
+    await this.initialize();
+
+    if (!this.isEnabled) {
       return;
     }
-    await this.database.incrementCounter(counterName);
+
+    await this.database.incrementCounter(this.instanceId, counterName);
+  }
+
+  public async reportStats() {
+    await this.initialize();
+
+    if (!this.isEnabled) {
+      return;
+    }
+
+    const today = Date.now();
+
+    // this is a non-foolproof attempt at avoiding multiple instances of the telemetry client
+    // from submitting the same reports. If their timers are running at the same time, this will
+    // of course race, but if they're more than a second apart this should be enough (and most likely they will be)
+    const lastDateString = (await this.settings.getItem(LastDailyStatsReportKey)) || new Date().toString();
+    await this.settings.setItem(LastDailyStatsReportKey, today.toString());
+
+    const stats = await this.getReportsBefore(new Date(today));
+
+    if (stats.length === 0) {
+      // no reports, we're done here
+      return;
+    }
+
+    const response = await this.post(stats);
+
+    if (response.statusCode !== 200) {
+      // restore the original last submission time so we can try again
+      await this.settings.setItem(LastDailyStatsReportKey, lastDateString);
+      throw new ReportError(response.statusCode);
+    } else {
+      await this.database.clearData(new Date(today));
+      console.error("stats successfully reported");
+    }
+  }
+
+  // ====== Internal Helpers =====
+
+  /* send a ping to indicate that the user has changed their opt-in preferences.
+  * public for testing purposes only.
+  */
+  public async sendOptInStatusPing(optIn: boolean): Promise<void> {
+    await this.initialize();
+
+    const direction = optIn ? "in" : "out";
+
+    const response = await this.post({
+      eventType: "ping",
+      dimensions: {
+        optIn,
+      },
+    });
+
+    if (response.statusCode !== 200) {
+      throw new PingError(response.statusCode);
+    }
+    this.settings.setItem(HasSentOptInPingKey, "1");
+
+    console.error(`Opt ${direction} reported.`);
+  }
+
+  async getReportsBefore(date?: Date): Promise<IMetrics[]> {
+    await this.initialize();
+
+    return (await this.database.getMetrics(date)).map(x => {
+      x.dimensions.gitHubUser = this.gitHubUser;
+      return x;
+    });
+  }
+
+  async getCurrentReport(): Promise<IMetrics> {
+    await this.initialize();
+
+    const report = await this.database.getCurrentMetrics(this.instanceId);
+    report.dimensions.gitHubUser = this.gitHubUser;
+    return report;
+  }
+
+  createReport(): IMetrics {
+    return {
+      eventType: "usage",
+      measures: {},
+      customEvents: [],
+      timings: [],
+      dimensions: {
+        appVersion: this.version,
+        platform: process.platform,
+        guid: this.guid!,
+        date: new Date(Date.now()).toISOString(),
+        lang: process.env.LANG || "",
+        gitHubUser: this.gitHubUser,
+      },
+    };
   }
 
   /** Post some data to our stats endpoint.
    * This is public for testing purposes only.
    */
-  public async post(body: object): Promise<Response> {
-    const requestHeaders: {[name: string]: string} = { "Content-Type": "application/json" };
+  public async post(body: object): Promise<IncomingMessage> {
+    const requestHeaders: { [name: string]: string } = { "Content-Type": "application/json" };
     const token = this.getAccessToken();
     if (token) {
       requestHeaders.Authorization = `token ${token}`;
     }
-    const options: object = {
+    const options: RequestOptions = {
+      hostname: USAGE_HOST,
+      protocol: USAGE_PROTOCOL,
       method: "POST",
+      path: this.usagePath,
       headers: requestHeaders,
-      body: JSON.stringify(body),
     };
+    if (USAGE_PORT) {
+      options.port = USAGE_PORT;
+    }
 
-    return this.fetch(this.appUrl, options);
+    return this.fetch(options, JSON.stringify(body));
   }
 
   /** Exists to enable us to mock fetch in tests
    * This is public for testing purposes only.
    */
-  public async fetch(url: string, options: object): Promise<Response> {
-    return fetch(url, options);
+  public async fetch(options: RequestOptions, body: string): Promise<IncomingMessage> {
+    return new Promise<IncomingMessage>((resolve, reject) => {
+      try {
+        const post = https.request(options, postResponse => {
+          resolve(postResponse);
+        });
+        post.write(body);
+        post.end();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  private async initialize(): Promise<void> {
+    if (this.guid) {
+      return;
+    }
+    this.guid = await this.getGUID();
+
+    const optOutValue = await this.settings.getItem(StatsOptOutKey);
+    if (optOutValue) {
+      this.optOut = !!parseInt(optOutValue, 10);
+
+      // If the user has set an opt out value but we haven't sent the ping yet,
+      // give it a shot now.
+      if (!(await this.settings.getItem(HasSentOptInPingKey))) {
+        if (!this.isDevMode || this.trackInDevMode) {
+          await this.sendOptInStatusPing(!this.optOut);
+        }
+      }
+    } else {
+      this.optOut = false;
+    }
   }
 
   /** Should the app report its daily stats?
-   * Public for testing purposes only.
    */
-  public hasReportingIntervalElapsed(): boolean {
+  private async hasReportingIntervalElapsed(): Promise<boolean> {
+    return (await this.getTimeToNextReport()) === 0;
+  }
 
-    const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
-    let lastDate = 0;
-    if (lastDateString && lastDateString.length > 0) {
-      lastDate = parseInt(lastDateString, 10);
-    }
-
+  private async getTimeToNextReport(): Promise<number> {
+    let lastDate = parseInt((await this.settings.getItem(LastDailyStatsReportKey)) || new Date().toString(), 10);
     if (isNaN(lastDate)) {
       lastDate = 0;
     }
 
     const now = Date.now();
-    return (now - lastDate) > DailyStatsReportIntervalInMs;
+    const timeToNextReport = dayInMs - (now - lastDate);
+    return timeToNextReport < 0 ? 0 : timeToNextReport;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
-  private getTimer(loopInterval: number): NodeJS.Timer {
+  private async getTimer(): Promise<NodeJS.Timer> {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+
     // todo (tt, 5/2018): maybe we shouldn't even set up the timer
     // in dev mode or if the user has opted out.
-    const timer = setInterval(() => {
-      if (this.hasReportingIntervalElapsed()) {
-        this.reportStats(getISODate);
-      }
-    }, loopInterval);
+    const timeToNextReport = await this.getTimeToNextReport();
+    this.timer = setTimeout(async () => this.maybeReportStats(), timeToNextReport);
+    return this.timer;
+  }
 
-    if (timer.unref !== undefined) {
-      // make sure we don't block node from exiting in tests
-      // https://stackoverflow.com/questions/48172363/mocha-test-suite-never-ends-when-setinterval-running
-      timer.unref();
+  private async maybeReportStats(): Promise<void> {
+    if (!this.isEnabled) {
+      return;
     }
-    return timer;
+    if (await this.hasReportingIntervalElapsed()) {
+      await this.reportStats();
+    }
+    this.timer = await this.getTimer();
+  }
+
+  private async getGUID(): Promise<string> {
+    let guid = await this.settings.getItem(StatsGUIDKey);
+    if (!guid) {
+      guid = uuid();
+      await this.settings.setItem(StatsGUIDKey, guid);
+    }
+    return guid;
   }
 }

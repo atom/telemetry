@@ -1,121 +1,100 @@
 import * as loki from "lokijs";
+import { IStatsDatabase, IMetrics } from "telemetry-github";
+import { getYearMonthDay } from ".";
 
-export default class StatsDatabase {
+interface IDBEntry {
+  date: number;
+  instanceId: string;
+  metrics: IMetrics;
+}
 
-  /**
-   * Counters which can be incremented.
-   * Most commonly used for usage stats that don't need
-   * additional metadata.
-   */
-  private counters: Collection<any>;
+const now = () => new Date(Date.now()).toISOString();
 
-  /**
-   * Events are used to record application metrics that need additional metadata
-   * For example, file open events where you'd want to track the language of the file.
-   * Events are an object, to give clients maximal flexibility.  Date is automatically added
-   * for you in ISO-8601 format.
-   */
-  private customEvents: Collection<any>;
+export default class StatsDatabase implements IStatsDatabase {
+  private db: loki;
 
-  /**
-   * Timing is used to record application metrics that deal with latency.
-   */
-  private timings: Collection<any>;
+  private metrics: Collection<IDBEntry>;
 
-  private getDate: () => string;
-
-  public constructor(getISODate: () => string) {
-    const db = new loki("stats-database");
-    this.counters = db.addCollection("counters");
-    this.customEvents = db.addCollection("customEvents");
-    this.timings = db.addCollection("timing");
-    this.getDate = () => getISODate();
+  public constructor(private createCurrentReport: () => IMetrics) {
+    this.db = new loki("stats-database");
+    this.metrics = this.db.addCollection("metrics");
   }
 
-  public async addCustomEvent(eventType: string, customEvent: any) {
-    customEvent.date = this.getDate();
+  public async close(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.db.close(e => {
+        if (e) {
+          reject(e);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  public async addCustomEvent(instanceId: string, eventType: string, customEvent: any): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
+    customEvent.date = now();
     customEvent.eventType = eventType;
-    this.customEvents.insert(customEvent);
+    report.metrics.customEvents.push(customEvent);
+
+    await this.metrics.update(report);
   }
 
-  public async incrementCounter(counterName: string) {
-    const existing = await this.getUnformattedCounter(counterName);
-    if (existing) {
-      existing.count += 1;
-      this.counters.update(existing);
-    } else {
-      this.counters.insert({ name: counterName, count: 1});
+  public async incrementCounter(instanceId: string, counterName: string): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
+
+    if (!report.metrics.measures.hasOwnProperty(counterName)) {
+      report.metrics.measures[counterName] = 0;
     }
+    report.metrics.measures[counterName]++;
+    await this.metrics.update(report);
   }
 
-  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
-    const timingData = { eventType, durationInMilliseconds, metadata, date: this.getDate() };
-    this.timings.insert(timingData);
+  public async addTiming(
+    instanceId: string,
+    eventType: string,
+    durationInMilliseconds: number,
+    metadata = {}
+  ): Promise<void> {
+    const report = await this.getCurrentDBEntry(instanceId);
+    report.metrics.timings.push({ eventType, durationInMilliseconds, metadata, date: now() });
+    await this.metrics.update(report);
   }
 
   /** Clears all values that exist in the database.
    * returns nothing.
    */
-  public async clearData() {
-    await this.counters.clear();
-    await this.customEvents.clear();
-    await this.timings.clear();
-  }
-
-  public async getTimings(): Promise<object[]> {
-    const timings = await this.timings.find();
-    timings.forEach((timing) => {
-      delete timing.$loki;
-      delete timing.meta;
-    });
-    return timings;
-  }
-
-  public async getCustomEvents(): Promise<object[]> {
-    const events = await this.customEvents.find();
-    events.forEach((event) => {
-      // honey badger don't care about lokijis meta data.
-      delete event.$loki;
-      delete event.meta;
-    });
-    return events;
-  }
-
-  /** Get all counters.
-   * This method strips the lokijs metadata, which external
-   * callers shouldn't care about.
-   * Returns something like { commits: 7, coAuthoredCommits: 8 }.
-   */
-  public async getCounters():
-    Promise<{[name: string]: number}> {
-    const counters: { [name: string]: number } = {};
-    this.counters.find().forEach((counter) => {
-      counters[counter.name] = counter.count;
-    });
-    return counters;
-  }
-
-  /** Get a single counter.
-   * Don't strip lokijs metadata, because if we want to update existing
-   * items we need to pass that shizz back in.
-   * Returns something like:
-   * [ { name: 'coAuthoredCommits',count: 1, meta: { revision: 0, created: 1526592157642, version: 0 },'$loki': 1 } ]
-   */
-  private async getUnformattedCounter(counterName: string) {
-    const existing = await this.counters.find({ name: counterName });
-
-    if (existing.length > 1) {
-      // we should never get into this situation because if we are using the lokijs
-      // api properly it should overwrite existing items with the same name.
-      // but I've seen things (in prod) you people wouldn't believe.
-      // Attack ships on fire off the shoulder of Orion.
-      // Cosmic rays flipping bits and influencing the outcome of elections.
-      // So throw an error just in case.
-      throw new Error("multiple counters with the same name");
-    } else if (existing.length < 1) {
-      return null;
+  public async clearData(date?: Date): Promise<void> {
+    if (!date) {
+      await this.metrics.clear();
     } else {
-      return existing[0];
+      const today = getYearMonthDay(date);
+      await this.metrics.findAndRemove({ date: { $lt: today } });
     }
+  }
+
+  public async getMetrics(beforeDate?: Date): Promise<IMetrics[]> {
+    if (beforeDate) {
+      const today = getYearMonthDay(beforeDate);
+      return this.metrics.find({ date: { $lt: today } }).map(x => x.metrics);
+    } else {
+      return this.metrics.find().map(x => x.metrics);
+    }
+  }
+
+  public async getCurrentMetrics(instanceId: string): Promise<IMetrics> {
+    return this.getCurrentDBEntry(instanceId).then(x => x.metrics);
+  }
+
+  private async getCurrentDBEntry(instanceId: string): Promise<IDBEntry> {
+    let report = await this.metrics.findOne({ instanceId });
+
+    if (!report) {
+      const newReport = this.createCurrentReport();
+      const today = getYearMonthDay(new Date(Date.now()));
+      report = (await this.metrics.insertOne({ date: today, instanceId, metrics: newReport })) || null;
+    }
+    return report!;
   }
 }

@@ -1,0 +1,42 @@
+{
+  "verbose": true,
+  "increment": false,
+  "changelogCommand": "node_modules/.bin/conventional-changelog -p angular -r2 | tail -n +3",
+  "requireCleanWorkingDir": false,
+  "src": {
+    "commit": false,
+    "tag": false,
+    "push": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": true,
+    "releaseName": "Release v%s",
+    "preRelease": true,
+    "draft": false,
+    "assets": "dist/*"
+  },
+  "dist": {
+    "commit": false,
+    "tag": false,
+    "push": false
+  },
+  "prompt": {
+    "src": {
+      "commit": false,
+      "tag": false,
+      "push": false,
+      "release": true,
+      "publish": false
+    },
+    "dist": {
+      "commit": false,
+      "tag": false,
+      "push": false,
+      "release": false,
+      "publish": false
+    }
+  }
+}
