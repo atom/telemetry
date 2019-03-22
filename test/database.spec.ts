@@ -42,26 +42,43 @@ describe("database", async function() {
     it("adds and gets a single timer", async function() {
       const eventType = "load";
       const durationInMilliseconds = 100;
-      const metadata = { meta: "data" };
+      const metadata = { field: "value" };
+
       await database.addTiming(eventType, durationInMilliseconds, metadata);
 
       const timings = await database.getTimings();
-      assert.deepEqual(timings[0], { eventType, durationInMilliseconds, metadata, date: getDate() });
+      assert.deepEqual(
+        timings[0],
+        { ...metadata, eventType, durationInMilliseconds, date: getDate() },
+      );
     });
     it("adds and gets multiple timers", async function() {
       const eventType = "load";
       const durationInMilliseconds1 = 100;
       const durationInMilliseconds2 = 200;
-      const metadata = { meta: "data" };
+      const metadata = { field: "value" };
       await database.addTiming(eventType, durationInMilliseconds1, metadata);
       await database.addTiming(eventType, durationInMilliseconds2, metadata);
 
       const timings = await database.getTimings();
-      assert.deepEqual(timings[0], { eventType,
-        durationInMilliseconds: durationInMilliseconds1, metadata, date: getDate() });
-      assert.deepEqual(timings[1], {
-        eventType,
-        durationInMilliseconds: durationInMilliseconds2, metadata, date: getDate() });
+      assert.deepEqual(
+        timings[0],
+        {
+          ...metadata,
+          eventType,
+          durationInMilliseconds: durationInMilliseconds1,
+          date: getDate(),
+        },
+      );
+      assert.deepEqual(
+        timings[1],
+        {
+          ...metadata,
+          eventType,
+          durationInMilliseconds: durationInMilliseconds2,
+          date: getDate(),
+        },
+      );
     });
   });
   describe("incrementCounter", async function() {

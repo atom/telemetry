@@ -223,7 +223,7 @@ describe("StatsStore", function() {
       const timingEventName = "load";
       const loadTimeInMs1 = 100;
       const loadTimeInMs2 = 200;
-      const metadata = { meta: "data"};
+      const metadata = { field: "value"};
       await store.addTiming(timingEventName, loadTimeInMs1, metadata);
       await store.addTiming(timingEventName, loadTimeInMs2, metadata);
 

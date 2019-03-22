@@ -32,10 +32,10 @@ export default class StatsDatabase {
     this.getDate = () => getISODate();
   }
 
-  public async addCustomEvent(eventType: string, customEvent: any) {
-    customEvent.date = this.getDate();
-    customEvent.eventType = eventType;
-    this.customEvents.insert(customEvent);
+  public async addCustomEvent(eventType: string, metadata: any) {
+    const eventData = { ...metadata, eventType, date: this.getDate() };
+
+    this.customEvents.insert(eventData);
   }
 
   public async incrementCounter(counterName: string) {
@@ -49,7 +49,8 @@ export default class StatsDatabase {
   }
 
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
-    const timingData = { eventType, durationInMilliseconds, metadata, date: this.getDate() };
+    const timingData = { ...metadata, eventType, durationInMilliseconds, date: this.getDate() };
+
     this.timings.insert(timingData);
   }
 
