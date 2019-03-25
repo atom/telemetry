@@ -1,10 +1,12 @@
 import { expect, assert } from "chai";
 import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
-  LastDailyStatsReportKey, IMetrics, ReportingLoopIntervalInMs, StatsOptOutKey, StatsStore } from "../src/index";
+  LastDailyStatsReportKey, IMetrics, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import { getGUID } from "../src/uuid";
+
+const ReportingLoopIntervalInMs = DailyStatsReportIntervalInMs / 6;
 
 chai.use(chaiAsPromised);
 
@@ -153,6 +155,32 @@ describe("StatsStore", function() {
         "Content-Type": "application/json",
       });
     });
+    it("logs a message in the console when in verbose mode", async function() {
+      const consoleLogStub = sinon.stub(console, "log");
+
+      store = new StatsStore(AppName.Atom, version, false, getAccessToken, {verboseMode: true});
+      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
+      await store.reportStats(getDate);
+      assert.deepEqual(fetch.args[0][1].headers, {
+        "Content-Type": "application/json",
+        "Authorization": `token ${ACCESS_TOKEN}`,
+      });
+      sinon.assert.calledWith(consoleLogStub, "Sending metrics");
+      consoleLogStub.restore();
+    });
+    it("logs a message in the console when in dev mode and dev logging is enabled", async function() {
+      const consoleLogStub = sinon.stub(console, "log");
+
+      store = new StatsStore(AppName.Atom, version, true, getAccessToken, {logInDevMode: true});
+      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
+      await store.reportStats(getDate);
+      assert.deepEqual(fetch.args[0][1].headers, {
+        "Content-Type": "application/json",
+        "Authorization": `token ${ACCESS_TOKEN}`,
+      });
+      sinon.assert.calledWith(consoleLogStub, "Sending metrics");
+      consoleLogStub.restore();
+    });
   });
   describe("setOptOut", async function() {
     it("sets the opt out preferences in local storage", async function() {
@@ -185,6 +213,18 @@ describe("StatsStore", function() {
     });
     it("returns true if enough time has elapsed since last report", function() {
       localStorage.setItem(LastDailyStatsReportKey, (Date.now() - DailyStatsReportIntervalInMs - 1).toString());
+      assert.isTrue(store.hasReportingIntervalElapsed());
+    });
+
+    it("returns true if enough time has elapsed since last report for a custom interval", function() {
+      const reportingFrequency = 100;
+
+      store = new StatsStore(AppName.Atom, version, false, getAccessToken, {reportingFrequency});
+
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - reportingFrequency + 1).toString());
+      assert.isFalse(store.hasReportingIntervalElapsed());
+
+      localStorage.setItem(LastDailyStatsReportKey, (Date.now() - reportingFrequency - 1).toString());
       assert.isTrue(store.hasReportingIntervalElapsed());
     });
   });
