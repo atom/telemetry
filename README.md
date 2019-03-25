@@ -26,7 +26,7 @@ but for right now it looks something like this:
 import StatsStore from "telemetry-github";
 
 // make a store
-const store = new StatsStore("atom", "1.24.1", false, getAccessToken);
+const store = new StatsStore("atom", "1.24.1", false, getAccessToken, options);
 
 // record a usage event
 store.incrementCounter("commit");
@@ -66,6 +66,23 @@ const metadata = {spam: "ham"};
 // metadata is optional
 store.addTiming(eventType, loadTimeInMilliseconds, metadata);
 ```
+
+### Options
+
+You can pass additional options to `telemetry` via its constructor:
+
+```js
+// The following are the default values
+const options = {
+  reportingFrequency: 86400, // How often do we want to send metrics.
+  logInDevMode: false, // Whether it should send metrics when isDevMode is true.
+  verboseMode: false, // Whether it should log the requests in the console.
+};
+
+const store = new StatsStore("atom", "1.24.1", false, getAccessToken, options);
+```
+
+All the option parameters are optional.
 
 ## Publishing a new release
 
