@@ -19,9 +19,6 @@ const hours = 60 * 60 * 1000;
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
 
-/** How often (in milliseconds) we check to see if it's time to report stats. */
-export const ReportingLoopIntervalInMs = hours * 4;
-
 interface IDimensions {
   /** The app version. */
   readonly appVersion: string;
@@ -100,16 +97,37 @@ export class StatsStore {
 
   private gitHubUser: string | null;
 
-  public constructor(appName: AppName, version: string, isDevMode: boolean, getAccessToken = () => "") {
+  /** How often daily stats should be submitted (in ms). */
+  private reportingFrequency: number;
+
+  /** If true, it'll print every metrics request on the console. */
+  private verboseMode: boolean;
+
+  public constructor(
+    appName: AppName,
+    version: string,
+    isDevMode: boolean,
+    getAccessToken = () => "",
+    options: {
+      logInDevMode?: boolean,
+      reportingFrequency?: number,
+      verboseMode?: boolean,
+    } = {},
+  ) {
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
 
-    this.isDevMode = isDevMode;
+    this.isDevMode = !options.logInDevMode && isDevMode;
     this.getAccessToken = getAccessToken;
     this.gitHubUser = null;
 
-    this.timer = this.getTimer(ReportingLoopIntervalInMs);
+    this.reportingFrequency = options.reportingFrequency || exports.DailyStatsReportIntervalInMs;
+
+    // We set verbose mode when logging in Dev mode to prevent users from forgetting to turn
+    // off the logging in dev mode.
+    this.verboseMode = (!!options.logInDevMode && isDevMode) || !!options.verboseMode;
+    this.timer = this.getTimer(this.reportingFrequency / 6);
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
@@ -247,6 +265,10 @@ export class StatsStore {
    * This is public for testing purposes only.
    */
   public async post(body: object): Promise<Response> {
+    if (this.verboseMode) {
+      console.log("Sending metrics", body);
+    }
+
     const requestHeaders: {[name: string]: string} = { "Content-Type": "application/json" };
     const token = this.getAccessToken();
     if (token) {
@@ -284,7 +306,7 @@ export class StatsStore {
     }
 
     const now = Date.now();
-    return (now - lastDate) > DailyStatsReportIntervalInMs;
+    return (now - lastDate) > this.reportingFrequency;
   }
 
   /** Set a timer so we can report the stats when the time comes. */
