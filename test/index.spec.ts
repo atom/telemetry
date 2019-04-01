@@ -87,6 +87,12 @@ describe("StatsStore", function() {
       await storeInDevMode.reportStats(getDate);
       sinon.assert.notCalled(postStub);
     });
+    it("does not report stats when isReporting is false", async function() {
+      store.setIsReporting(true);
+      postStub.resolves({ status: 200 });
+      await store.reportStats(getDate);
+      sinon.assert.notCalled(postStub);
+    });
     it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
       postStub.resolves({ status: 200 });
       store.setOptOut(true);
