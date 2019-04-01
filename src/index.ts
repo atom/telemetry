@@ -103,6 +103,12 @@ export class StatsStore {
   /** If true, it'll print every metrics request on the console. */
   private verboseMode: boolean;
 
+  /** are we currently in the process of reporting stats?
+   * Since we can have multiple windows using the same db instance, prevent race
+   * conditions by only sending stats if some other process is not already trying to do so.
+   */
+  private isReporting: boolean;
+
   public constructor(
     appName: AppName,
     version: string,
@@ -121,6 +127,7 @@ export class StatsStore {
     this.isDevMode = !options.logInDevMode && isDevMode;
     this.getAccessToken = getAccessToken;
     this.gitHubUser = null;
+    this.isReporting = false;
 
     this.reportingFrequency = options.reportingFrequency || exports.DailyStatsReportIntervalInMs;
 
@@ -160,12 +167,13 @@ export class StatsStore {
   }
 
   public async reportStats(getDate: () => string) {
-    if (this.optOut || this.isDevMode) {
+    if (this.optOut || this.isDevMode || this.isReporting) {
       return;
     }
     const stats = await this.getDailyStats(getDate);
 
     try {
+      this.isReporting = true;
       const response = await this.post(stats);
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
@@ -178,7 +186,16 @@ export class StatsStore {
       // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
       // so we have some kind of visibility into how often things are failing.
       console.log(err);
+    } finally {
+      this.isReporting = false;
     }
+  }
+
+  /* is the store currently in the process of reporting stats?
+  * public for test purposes only.
+  */
+  public setIsReporting(isReporting: boolean) {
+    this.isReporting = isReporting;
   }
 
   /* send a ping to indicate that the user has changed their opt-in preferences.
