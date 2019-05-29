@@ -1,8 +1,8 @@
 import * as loki from "lokijs";
-import {IBaseDatabase, ICounters, ITimingEvent, ICustomEvent} from "./base";
+import {BaseDatabase, Counters, TimingEvent, CustomEvent} from "./base";
 import {getISODate} from "../util";
 
-export default class LokiDatabase implements IBaseDatabase {
+export default class LokiDatabase implements BaseDatabase {
 
   /**
    * Counters which can be incremented.
@@ -20,12 +20,12 @@ export default class LokiDatabase implements IBaseDatabase {
    * Events are an object, to give clients maximal flexibility.  Date is automatically added
    * for you in ISO-8601 format.
    */
-  private customEvents: Collection<ICustomEvent>;
+  private customEvents: Collection<CustomEvent>;
 
   /**
    * Timing is used to record application metrics that deal with latency.
    */
-  private timings: Collection<ITimingEvent>;
+  private timings: Collection<TimingEvent>;
 
   public constructor() {
     const db = new loki("stats-database");
@@ -35,7 +35,7 @@ export default class LokiDatabase implements IBaseDatabase {
   }
 
   public async addCustomEvent(eventType: string, customEvent: object) {
-    const eventToInsert: ICustomEvent = {
+    const eventToInsert: CustomEvent = {
       ...customEvent,
       date: getISODate(),
       eventType,
@@ -68,7 +68,7 @@ export default class LokiDatabase implements IBaseDatabase {
     await this.timings.clear();
   }
 
-  public async getTimings(): Promise<ITimingEvent[]> {
+  public async getTimings(): Promise<TimingEvent[]> {
     const timings = await this.timings.find();
     timings.forEach((timing) => {
       delete timing.$loki;
@@ -78,7 +78,7 @@ export default class LokiDatabase implements IBaseDatabase {
     return timings;
   }
 
-  public async getCustomEvents(): Promise<ICustomEvent[]> {
+  public async getCustomEvents(): Promise<CustomEvent[]> {
     const events = await this.customEvents.find();
     events.forEach((event) => {
       // honey badger don't care about lokijis meta data.
@@ -93,8 +93,8 @@ export default class LokiDatabase implements IBaseDatabase {
    * callers shouldn't care about.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
-  public async getCounters(): Promise<ICounters> {
-    const counters: ICounters = {};
+  public async getCounters(): Promise<Counters> {
+    const counters: Counters = {};
     this.counters.find().forEach((counter) => {
       counters[counter.name] = counter.count;
     });

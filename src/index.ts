@@ -1,5 +1,5 @@
 import { getGUID } from "./uuid";
-import {IBaseDatabase, ITimingEvent, ICustomEvent, ICounters} from "./databases/base";
+import {BaseDatabase, TimingEvent, CustomEvent, Counters} from "./databases/base";
 import StatsDatabase from "./databases/loki";
 import {getISODate} from "./util";
 
@@ -21,7 +21,7 @@ const hours = 60 * 60 * 1000;
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
 
-interface IDimensions {
+interface Dimensions {
   /** The app version. */
   readonly appVersion: string;
 
@@ -41,16 +41,16 @@ interface IDimensions {
   readonly gitHubUser: string | null;
 }
 
-export interface IMetrics {
-  dimensions: IDimensions;
+export interface Metrics {
+  dimensions: Dimensions;
   // object with the value for each counter name.
-  measures: ICounters;
+  measures: Counters;
 
   // array of custom events that can be defined by the client
-  customEvents: ICustomEvent[];
+  customEvents: CustomEvent[];
 
   // array of timing events
-  timings: ITimingEvent[];
+  timings: TimingEvent[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -83,7 +83,7 @@ export class StatsStore {
   private isDevMode: boolean;
 
   /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database: IBaseDatabase;
+  private database: BaseDatabase;
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -207,7 +207,7 @@ export class StatsStore {
   }
 
   // public for testing purposes only
-  public async getDailyStats(): Promise<IMetrics> {
+  public async getDailyStats(): Promise<Metrics> {
     return {
       measures: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),

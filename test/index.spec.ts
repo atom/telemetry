@@ -1,6 +1,6 @@
 import { expect, assert } from "chai";
 import { AppName, DailyStatsReportIntervalInMs, HasSentOptInPingKey,
-  LastDailyStatsReportKey, IMetrics, StatsOptOutKey, StatsStore } from "../src/index";
+  LastDailyStatsReportKey, Metrics, StatsOptOutKey, StatsStore } from "../src/index";
 import * as sinon from "sinon";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
@@ -54,7 +54,7 @@ describe("StatsStore", function() {
     });
   });
   describe("reportStats", async function() {
-    let fakeEvent: IMetrics;
+    let fakeEvent: Metrics;
     let clock: sinon.SinonFakeTimers;
 
     beforeEach(async function() {
