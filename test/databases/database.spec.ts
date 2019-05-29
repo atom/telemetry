@@ -1,6 +1,10 @@
 import { assert } from "chai";
 import {BaseDatabase} from "../../src/databases/base";
 import LokiDatabase from "../../src/databases/loki";
+import IndexedDBDatabase from "../../src/databases/indexeddb";
+
+// Polyfill for the IndexedDB on Node.js.
+import "fake-indexeddb/auto";
 
 const grammar = "javascript";
 const openEventType = "open";
@@ -10,7 +14,7 @@ const deprecateEventType = "deprecate";
 const message = "oh noes";
 const deprecateEvent = { message, eventType: deprecateEventType };
 
-for (const DatabaseImpl of [LokiDatabase]) {
+for (const DatabaseImpl of [LokiDatabase, IndexedDBDatabase]) {
 describe(`database - ${DatabaseImpl.name}`, async function() {
   const counterName = "commits";
   let database: BaseDatabase;

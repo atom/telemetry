@@ -15,6 +15,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "idb": "^4.0.3",
     "lokijs": "^1.5.4",
     "uuid": "^3.2.1"
   },
@@ -27,6 +28,7 @@
     "@types/uuid": "^3.4.3",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
+    "fake-indexeddb": "^2.1.0",
     "mocha": "^5.1.1",
     "mock-local-storage": "^1.0.5",
     "sinon": "^5.0.3",
