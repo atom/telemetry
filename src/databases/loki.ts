@@ -2,7 +2,7 @@ import * as loki from "lokijs";
 import {IBaseDatabase, ICounters, ITimingEvent, ICustomEvent} from "./base";
 import {getISODate} from "../util";
 
-export default class StatsDatabase implements IBaseDatabase {
+export default class LokiDatabase implements IBaseDatabase {
 
   /**
    * Counters which can be incremented.
