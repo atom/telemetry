@@ -1,4 +1,5 @@
 import { getGUID } from "./uuid";
+import {IBaseDatabase, ITimingEvent, ICustomEvent, ICounters} from "./databases/base";
 import StatsDatabase from "./databases/loki";
 import {getISODate} from "./util";
 
@@ -42,15 +43,14 @@ interface IDimensions {
 
 export interface IMetrics {
   dimensions: IDimensions;
-  // metrics names are defined by the client and thus aren't knowable
-  // at compile time here.
-  measures: object;
+  // object with the value for each counter name.
+  measures: ICounters;
 
   // array of custom events that can be defined by the client
-  customEvents: object[];
+  customEvents: ICustomEvent[];
 
   // array of timing events
-  timings: object[];
+  timings: ITimingEvent[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -83,7 +83,7 @@ export class StatsStore {
   private isDevMode: boolean;
 
   /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database = new StatsDatabase();
+  private database: IBaseDatabase;
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -110,6 +110,7 @@ export class StatsStore {
       verboseMode?: boolean,
     } = {},
   ) {
+    this.database = new StatsDatabase();
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
@@ -270,7 +271,7 @@ export class StatsStore {
     if (token) {
       requestHeaders.Authorization = `token ${token}`;
     }
-    const options: object = {
+    const options = {
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify(body),
