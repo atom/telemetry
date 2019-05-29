@@ -31,7 +31,7 @@
     "mock-local-storage": "^1.0.5",
     "sinon": "^5.0.3",
     "ts-node": "^6.0.2",
-    "tslint": "^5.10.0",
-    "typescript": "^2.8.3"
+    "tslint": "^5.16.0",
+    "typescript": "^3.4.5"
   }
 }
