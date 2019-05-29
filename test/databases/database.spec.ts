@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import {BaseDatabase} from "../../src/databases/base";
 import LokiDatabase from "../../src/databases/loki";
 
 const grammar = "javascript";
@@ -9,12 +10,17 @@ const deprecateEventType = "deprecate";
 const message = "oh noes";
 const deprecateEvent = { message, eventType: deprecateEventType };
 
-describe("database", async function() {
+for (const DatabaseImpl of [LokiDatabase]) {
+describe(`database - ${DatabaseImpl.name}`, async function() {
   const counterName = "commits";
-  let database: LokiDatabase;
+  let database: BaseDatabase;
 
   beforeEach(async function() {
-    database = new LokiDatabase();
+    database = new DatabaseImpl();
+  });
+
+  afterEach(async function() {
+    await database.clearData();
   });
 
   // inserting into lokijs mutates the passed-in object
@@ -159,3 +165,4 @@ describe("database", async function() {
     });
   });
 });
+}
