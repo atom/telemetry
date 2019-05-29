@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import StatsDatabase from "../../src/databases/loki";
+import LokiDatabase from "../../src/databases/loki";
 
 const grammar = "javascript";
 const openEventType = "open";
@@ -11,10 +11,10 @@ const deprecateEvent = { message, eventType: deprecateEventType };
 
 describe("database", async function() {
   const counterName = "commits";
-  let database: StatsDatabase;
+  let database: LokiDatabase;
 
   beforeEach(async function() {
-    database = new StatsDatabase();
+    database = new LokiDatabase();
   });
 
   // inserting into lokijs mutates the passed-in object

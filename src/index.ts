@@ -1,6 +1,6 @@
 import { getGUID } from "./uuid";
 import {BaseDatabase, TimingEvent, CustomEvent, Counters} from "./databases/base";
-import StatsDatabase from "./databases/loki";
+import LokiDatabase from "./databases/loki";
 import {getISODate} from "./util";
 
 // if you're running a local instance of central, use
@@ -110,7 +110,7 @@ export class StatsStore {
       verboseMode?: boolean,
     } = {},
   ) {
-    this.database = new StatsDatabase();
+    this.database = new LokiDatabase();
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
