@@ -178,6 +178,10 @@ export class StatsStore {
     }
   }
 
+  public async clearData() {
+    await this.database.clearData();
+  }
+
   /* send a ping to indicate that the user has changed their opt-in preferences.
   * public for testing purposes only.
   */
