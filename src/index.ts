@@ -1,5 +1,7 @@
 import { getGUID } from "./uuid";
-import StatsDatabase from "./database";
+import {BaseDatabase, TimingEvent, CustomEvent, Counters} from "./databases/base";
+import StatsDatabase from "./databases/loki";
+import {getISODate} from "./util";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
@@ -19,7 +21,7 @@ const hours = 60 * 60 * 1000;
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
 
-interface IDimensions {
+interface Dimensions {
   /** The app version. */
   readonly appVersion: string;
 
@@ -39,17 +41,16 @@ interface IDimensions {
   readonly gitHubUser: string | null;
 }
 
-export interface IMetrics {
-  dimensions: IDimensions;
-  // metrics names are defined by the client and thus aren't knowable
-  // at compile time here.
-  measures: object;
+export interface Metrics {
+  dimensions: Dimensions;
+  // object with the value for each counter name.
+  measures: Counters;
 
   // array of custom events that can be defined by the client
-  customEvents: object[];
+  customEvents: CustomEvent[];
 
   // array of timing events
-  timings: object[];
+  timings: TimingEvent[];
 }
 
 /** The goal is for this package to be app-agnostic so we can add
@@ -58,11 +59,6 @@ export interface IMetrics {
 export enum AppName {
   Atom = "atom",
 }
-
-/** helper for getting the date, which we pass in so that we can mock
- * in unit tests.
- */
-const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
 
@@ -87,7 +83,7 @@ export class StatsStore {
   private isDevMode: boolean;
 
   /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database = new StatsDatabase(getISODate);
+  private database: BaseDatabase;
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also
@@ -114,6 +110,7 @@ export class StatsStore {
       verboseMode?: boolean,
     } = {},
   ) {
+    this.database = new StatsDatabase();
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
@@ -159,11 +156,11 @@ export class StatsStore {
     }
   }
 
-  public async reportStats(getDate: () => string) {
+  public async reportStats() {
     if (this.optOut || this.isDevMode) {
       return;
     }
-    const stats = await this.getDailyStats(getDate);
+    const stats = await this.getDailyStats();
 
     try {
       const response = await this.post(stats);
@@ -210,7 +207,7 @@ export class StatsStore {
   }
 
   // public for testing purposes only
-  public async getDailyStats(getDate: () => string): Promise<IMetrics> {
+  public async getDailyStats(): Promise<Metrics> {
     return {
       measures: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),
@@ -220,7 +217,7 @@ export class StatsStore {
         platform: process.platform,
         guid: getGUID(),
         eventType: "usage",
-        date: getDate(),
+        date: getISODate(),
         language: process.env.LANG || "",
         gitHubUser: this.gitHubUser,
       },
@@ -274,7 +271,7 @@ export class StatsStore {
     if (token) {
       requestHeaders.Authorization = `token ${token}`;
     }
-    const options: object = {
+    const options = {
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify(body),
@@ -315,7 +312,7 @@ export class StatsStore {
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
       if (this.hasReportingIntervalElapsed()) {
-        this.reportStats(getISODate);
+        this.reportStats();
       }
     }, loopInterval);
 

@@ -1,13 +1,18 @@
 import * as loki from "lokijs";
+import {BaseDatabase, Counters, TimingEvent, CustomEvent} from "./base";
+import {getISODate} from "../util";
 
-export default class StatsDatabase {
+export default class LokiDatabase implements BaseDatabase {
 
   /**
    * Counters which can be incremented.
    * Most commonly used for usage stats that don't need
    * additional metadata.
    */
-  private counters: Collection<any>;
+  private counters: Collection<{
+    name: string;
+    count: number;
+  }>;
 
   /**
    * Events are used to record application metrics that need additional metadata
@@ -15,27 +20,28 @@ export default class StatsDatabase {
    * Events are an object, to give clients maximal flexibility.  Date is automatically added
    * for you in ISO-8601 format.
    */
-  private customEvents: Collection<any>;
+  private customEvents: Collection<CustomEvent>;
 
   /**
    * Timing is used to record application metrics that deal with latency.
    */
-  private timings: Collection<any>;
+  private timings: Collection<TimingEvent>;
 
-  private getDate: () => string;
-
-  public constructor(getISODate: () => string) {
+  public constructor() {
     const db = new loki("stats-database");
     this.counters = db.addCollection("counters");
     this.customEvents = db.addCollection("customEvents");
     this.timings = db.addCollection("timing");
-    this.getDate = () => getISODate();
   }
 
-  public async addCustomEvent(eventType: string, customEvent: any) {
-    customEvent.date = this.getDate();
-    customEvent.eventType = eventType;
-    this.customEvents.insert(customEvent);
+  public async addCustomEvent(eventType: string, customEvent: object) {
+    const eventToInsert: CustomEvent = {
+      ...customEvent,
+      date: getISODate(),
+      eventType,
+    };
+
+    this.customEvents.insert(eventToInsert);
   }
 
   public async incrementCounter(counterName: string) {
@@ -48,8 +54,8 @@ export default class StatsDatabase {
     }
   }
 
-  public async addTiming(eventType: string, durationInMilliseconds: number, metadata = {}) {
-    const timingData = { eventType, durationInMilliseconds, metadata, date: this.getDate() };
+  public async addTiming(eventType: string, durationInMilliseconds: number, metadata: object = {}) {
+    const timingData = { eventType, durationInMilliseconds, metadata, date: getISODate() };
     this.timings.insert(timingData);
   }
 
@@ -62,16 +68,17 @@ export default class StatsDatabase {
     await this.timings.clear();
   }
 
-  public async getTimings(): Promise<object[]> {
+  public async getTimings(): Promise<TimingEvent[]> {
     const timings = await this.timings.find();
     timings.forEach((timing) => {
       delete timing.$loki;
       delete timing.meta;
     });
+
     return timings;
   }
 
-  public async getCustomEvents(): Promise<object[]> {
+  public async getCustomEvents(): Promise<CustomEvent[]> {
     const events = await this.customEvents.find();
     events.forEach((event) => {
       // honey badger don't care about lokijis meta data.
@@ -86,12 +93,12 @@ export default class StatsDatabase {
    * callers shouldn't care about.
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
-  public async getCounters():
-    Promise<{[name: string]: number}> {
-    const counters: { [name: string]: number } = {};
+  public async getCounters(): Promise<Counters> {
+    const counters: Counters = {};
     this.counters.find().forEach((counter) => {
       counters[counter.name] = counter.count;
     });
+
     return counters;
   }
 
