@@ -1,5 +1,6 @@
 import { getGUID } from "./uuid";
 import StatsDatabase from "./databases/loki";
+import {getISODate} from "./util";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.
@@ -58,11 +59,6 @@ export interface IMetrics {
 export enum AppName {
   Atom = "atom",
 }
-
-/** helper for getting the date, which we pass in so that we can mock
- * in unit tests.
- */
-const getISODate = () => new Date(Date.now()).toISOString();
 
 export class StatsStore {
 
@@ -159,11 +155,11 @@ export class StatsStore {
     }
   }
 
-  public async reportStats(getDate: () => string) {
+  public async reportStats() {
     if (this.optOut || this.isDevMode) {
       return;
     }
-    const stats = await this.getDailyStats(getDate);
+    const stats = await this.getDailyStats();
 
     try {
       const response = await this.post(stats);
@@ -210,7 +206,7 @@ export class StatsStore {
   }
 
   // public for testing purposes only
-  public async getDailyStats(getDate: () => string): Promise<IMetrics> {
+  public async getDailyStats(): Promise<IMetrics> {
     return {
       measures: await this.database.getCounters(),
       customEvents: await this.database.getCustomEvents(),
@@ -220,7 +216,7 @@ export class StatsStore {
         platform: process.platform,
         guid: getGUID(),
         eventType: "usage",
-        date: getDate(),
+        date: getISODate(),
         language: process.env.LANG || "",
         gitHubUser: this.gitHubUser,
       },
@@ -315,7 +311,7 @@ export class StatsStore {
     // in dev mode or if the user has opted out.
     const timer = setInterval(() => {
       if (this.hasReportingIntervalElapsed()) {
-        this.reportStats(getISODate);
+        this.reportStats();
       }
     }, loopInterval);
 
