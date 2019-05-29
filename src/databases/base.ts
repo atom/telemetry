@@ -1,5 +1,5 @@
 export interface IBaseDatabase {
-  addCustomEvent(eventType: string, customEvent: any): Promise<unknown>;
+  addCustomEvent(eventType: string, customEvent: object): Promise<unknown>;
 
   incrementCounter(counterName: string): Promise<unknown>;
 
@@ -11,9 +11,25 @@ export interface IBaseDatabase {
 
   clearData(): Promise<unknown>;
 
-  getTimings(): Promise<object[]>;
+  getTimings(): Promise<ITimingEvent[]>;
 
-  getCustomEvents(): Promise<object[]>;
+  getCustomEvents(): Promise<ICustomEvent[]>;
 
-  getCounters(): Promise<{[name: string]: number}>;
+  getCounters(): Promise<ICounters>;
+}
+
+export interface ICounters {
+  [name: string]: number;
+}
+
+export interface ITimingEvent {
+  date: string;
+  eventType: string;
+  durationInMilliseconds: number;
+  metadata: object;
+}
+
+export interface ICustomEvent {
+  date: string;
+  eventType: string;
 }

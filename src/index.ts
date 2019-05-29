@@ -87,7 +87,7 @@ export class StatsStore {
   private isDevMode: boolean;
 
   /** Instance of a class thats stores metrics so they can be stored across sessions */
-  private database = new StatsDatabase(getISODate);
+  private database = new StatsDatabase();
 
   /** function for getting GitHub access token if one exists.
    * We don't want to store the token, due to security concerns, and also

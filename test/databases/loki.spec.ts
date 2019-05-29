@@ -1,25 +1,22 @@
 import { assert } from "chai";
 import StatsDatabase from "../../src/databases/loki";
 
-const getDate = () => {
-  return "2018-05-16T21:54:24.500Z";
-};
-
 const grammar = "javascript";
 const openEventType = "open";
-const openEvent = { grammar, eventType: openEventType, date: getDate() };
+const openEvent = { grammar, eventType: openEventType};
 
 const deprecateEventType = "deprecate";
 const message = "oh noes";
-const deprecateEvent = { message, eventType: deprecateEventType, date: getDate() };
+const deprecateEvent = { message, eventType: deprecateEventType };
 
 describe("database", async function() {
   const counterName = "commits";
-
   let database: StatsDatabase;
+
   beforeEach(async function() {
-    database = new StatsDatabase(getDate);
+    database = new StatsDatabase();
   });
+
   // inserting into lokijs mutates the passed-in object
   // so that you can't insert the same object twice.
   // in real life this isn't a problem because you'd be passing in a new
@@ -28,14 +25,18 @@ describe("database", async function() {
   describe("custom event methods", async function() {
     it("adds and gets a single event", async function() {
       await database.addCustomEvent(openEventType, { grammar });
-      const events: any = await database.getCustomEvents();
-      assert.deepEqual(openEvent, events[0]);
+      const rawEvents = await database.getCustomEvents();
+      const events = rawEvents.map(({date, ...rest}) => rest);
+
+      assert.deepEqual(events[0], openEvent);
     });
     it("adds multiple events", async function() {
       await database.addCustomEvent(openEventType, { grammar });
       await database.addCustomEvent(deprecateEventType, { message });
-      const events: any = await database.getCustomEvents();
-      assert.deepEqual([openEvent, deprecateEvent], events);
+      const rawEvents = await database.getCustomEvents();
+      const events = rawEvents.map(({date, ...rest}) => rest);
+
+      assert.deepEqual(events, [openEvent, deprecateEvent]);
     });
   });
   describe("timing methods", async function() {
@@ -45,8 +46,10 @@ describe("database", async function() {
       const metadata = { meta: "data" };
       await database.addTiming(eventType, durationInMilliseconds, metadata);
 
-      const timings = await database.getTimings();
-      assert.deepEqual(timings[0], { eventType, durationInMilliseconds, metadata, date: getDate() });
+      const [{date, ...timingEvent}] = await database.getTimings();
+
+      assert.deepEqual(timingEvent, { eventType, durationInMilliseconds, metadata });
+      assert.isString(date);
     });
     it("adds and gets multiple timers", async function() {
       const eventType = "load";
@@ -56,12 +59,19 @@ describe("database", async function() {
       await database.addTiming(eventType, durationInMilliseconds1, metadata);
       await database.addTiming(eventType, durationInMilliseconds2, metadata);
 
-      const timings = await database.getTimings();
-      assert.deepEqual(timings[0], { eventType,
-        durationInMilliseconds: durationInMilliseconds1, metadata, date: getDate() });
-      assert.deepEqual(timings[1], {
-        eventType,
-        durationInMilliseconds: durationInMilliseconds2, metadata, date: getDate() });
+      const rawTimings = await database.getTimings();
+
+      // strip the dates from the timing events to make easier assertions.
+      const timings = rawTimings.map(({date, ...rest}) => rest);
+
+      assert.deepEqual(
+        timings[0],
+        { eventType, durationInMilliseconds: durationInMilliseconds1, metadata },
+      );
+      assert.deepEqual(
+        timings[1],
+        { eventType, durationInMilliseconds: durationInMilliseconds2, metadata },
+      );
     });
   });
   describe("incrementCounter", async function() {
