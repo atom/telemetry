@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import StatsDatabase from "../src/database";
+import StatsDatabase from "../../src/databases/loki";
 
 const getDate = () => {
   return "2018-05-16T21:54:24.500Z";

@@ -1,5 +1,5 @@
 import { getGUID } from "./uuid";
-import StatsDatabase from "./database";
+import StatsDatabase from "./databases/loki";
 
 // if you're running a local instance of central, use
 // "http://localhost:4000/api/usage/" instead.

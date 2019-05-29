@@ -1,6 +1,7 @@
 import * as loki from "lokijs";
+import {IBaseDatabase} from "./base";
 
-export default class StatsDatabase {
+export default class StatsDatabase implements IBaseDatabase {
 
   /**
    * Counters which can be incremented.
