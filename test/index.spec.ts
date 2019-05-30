@@ -81,7 +81,14 @@ describe("StatsStore", function() {
     it("handles failure case", async function() {
       postStub.resolves({ status: 500 });
       await store.reportStats();
-      sinon.assert.calledWith(postStub, fakeEvent);
+
+      const event: Metrics = postStub.getCalls()[0].args[0];
+
+      // Remove the date from both events since it can be different.
+      fakeEvent.dimensions = {...fakeEvent.dimensions, date: "mock"};
+      event.dimensions = {...event.dimensions, date: "mock"};
+
+      assert.deepEqual(event, fakeEvent);
 
       // counters should not be cleared if we fail to send daily stats
       const counters = (await store.getDailyStats()).measures;
