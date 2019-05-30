@@ -3,9 +3,6 @@ import {BaseDatabase} from "../../src/databases/base";
 import LokiDatabase from "../../src/databases/loki";
 import IndexedDBDatabase from "../../src/databases/indexeddb";
 
-// Polyfill for the IndexedDB on Node.js.
-import "fake-indexeddb/auto";
-
 const grammar = "javascript";
 const openEventType = "open";
 const openEvent = { grammar, eventType: openEventType};
