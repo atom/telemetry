@@ -1,6 +1,5 @@
 import { getGUID } from "./uuid";
 import {BaseDatabase, TimingEvent, CustomEvent, Counters} from "./databases/base";
-import LokiDatabase from "./databases/loki";
 import IndexedDBDatabase from "./databases/indexeddb";
 import {getISODate} from "./util";
 
