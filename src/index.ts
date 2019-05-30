@@ -1,6 +1,6 @@
 import { getGUID } from "./uuid";
 import {BaseDatabase, TimingEvent, CustomEvent, Counters} from "./databases/base";
-import StatsDatabase from "./databases/loki";
+import IndexedDBDatabase from "./databases/indexeddb";
 import {getISODate} from "./util";
 
 // if you're running a local instance of central, use
@@ -110,7 +110,7 @@ export class StatsStore {
       verboseMode?: boolean,
     } = {},
   ) {
-    this.database = new StatsDatabase();
+    this.database = new IndexedDBDatabase();
     this.version = version;
     this.appUrl = baseUsageApi + appName;
     const optOutValue = localStorage.getItem(StatsOptOutKey);
@@ -176,6 +176,10 @@ export class StatsStore {
       // so we have some kind of visibility into how often things are failing.
       console.log(err);
     }
+  }
+
+  public async clearData() {
+    await this.database.clearData();
   }
 
   /* send a ping to indicate that the user has changed their opt-in preferences.

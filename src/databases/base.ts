@@ -6,7 +6,7 @@ export interface BaseDatabase {
   addTiming(
     eventType: string,
     durationInMilliseconds: number,
-    metadata: object | undefined,
+    metadata?: object,
   ): Promise<unknown>;
 
   clearData(): Promise<unknown>;

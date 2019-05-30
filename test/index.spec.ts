@@ -27,8 +27,10 @@ describe("StatsStore", function() {
     store = new StatsStore(AppName.Atom, version, false, getAccessToken);
     postStub = sinon.stub(store, "post");
   });
-  afterEach(function() {
+  afterEach(async function() {
     localStorage.clear();
+
+    await store.clearData();
   });
   describe("constructor", function() {
     let clock: sinon.SinonFakeTimers;
@@ -55,22 +57,22 @@ describe("StatsStore", function() {
   });
   describe("reportStats", async function() {
     let fakeEvent: Metrics;
-    let clock: sinon.SinonFakeTimers;
 
     beforeEach(async function() {
-      clock = sinon.useFakeTimers();
       await store.incrementCounter("commit");
       fakeEvent = await store.getDailyStats();
-    });
-
-    afterEach(function() {
-      clock.restore();
     });
 
     it("handles success case", async function() {
       postStub.resolves({ status: 200 });
       await store.reportStats();
-      sinon.assert.calledWith(postStub, fakeEvent);
+      const event: Metrics = postStub.getCalls()[0].args[0];
+
+      // Remove the date from both events since it can be different.
+      fakeEvent.dimensions = {...fakeEvent.dimensions, date: "mock"};
+      event.dimensions = {...event.dimensions, date: "mock"};
+
+      assert.deepEqual(event, fakeEvent);
 
       // counters should be cleared in success case
       const counters = (await store.getDailyStats()).measures;
@@ -79,7 +81,14 @@ describe("StatsStore", function() {
     it("handles failure case", async function() {
       postStub.resolves({ status: 500 });
       await store.reportStats();
-      sinon.assert.calledWith(postStub, fakeEvent);
+
+      const event: Metrics = postStub.getCalls()[0].args[0];
+
+      // Remove the date from both events since it can be different.
+      fakeEvent.dimensions = {...fakeEvent.dimensions, date: "mock"};
+      event.dimensions = {...event.dimensions, date: "mock"};
+
+      assert.deepEqual(event, fakeEvent);
 
       // counters should not be cleared if we fail to send daily stats
       const counters = (await store.getDailyStats()).measures;

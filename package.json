@@ -4,9 +4,9 @@
   "description": "telemetry for GitHub client apps",
   "main": "./out/index.js",
   "scripts": {
-    "mocha": "./node_modules/.bin/mocha --require mock-local-storage --require ts-node/register ./test/**.spec.ts",
+    "mocha": "electron-mocha --renderer --require ts-node/register 'test/**/*.spec.ts'",
     "test": "npm run mocha && npm run lint",
-    "lint": "tsc && tslint -c tslint.json ./src/**.ts ./test/**.ts",
+    "lint": "tslint -c tslint.json 'index/**/*.ts' 'test/**/*.ts'",
     "prepare": "tsc"
   },
   "author": {
@@ -15,6 +15,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "idb": "^4.0.3",
     "lokijs": "^1.5.4",
     "uuid": "^3.2.1"
   },
@@ -27,8 +28,9 @@
     "@types/uuid": "^3.4.3",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
+    "electron": "^5.0.2",
+    "electron-mocha": "^8.0.2",
     "mocha": "^5.1.1",
-    "mock-local-storage": "^1.0.5",
     "sinon": "^5.0.3",
     "ts-node": "^6.0.2",
     "tslint": "^5.16.0",
