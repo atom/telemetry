@@ -18,8 +18,14 @@ export const SendingStatsKey = "metrics:stats-being-sent";
 /** Have we successfully sent the stats opt-in? */
 export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
+/** milliseconds in a minute (for readability, dawg) */
+const minutes = 60 * 1000;
+
 /** milliseconds in an hour (for readability, dawg) */
-const hours = 60 * 60 * 1000;
+const hours = 60 * minutes;
+
+/** How often do we want to check to report stats (also the delay until the first report). */
+const MaxReportingFrequency = 10 * minutes;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
@@ -130,7 +136,7 @@ export class StatsStore {
     // We set verbose mode when logging in Dev mode to prevent users from forgetting to turn
     // off the logging in dev mode.
     this.verboseMode = (!!options.logInDevMode && isDevMode) || !!options.verboseMode;
-    this.timer = this.getTimer(this.reportingFrequency / 6);
+    this.timer = this.getTimer(Math.min(this.reportingFrequency / 6, MaxReportingFrequency));
 
     if (optOutValue) {
       this.optOut = !!parseInt(optOutValue, 10);
