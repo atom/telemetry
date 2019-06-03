@@ -295,19 +295,10 @@ export class StatsStore {
    * Public for testing purposes only.
    */
   public hasReportingIntervalElapsed(): boolean {
-
-    const lastDateString = localStorage.getItem(LastDailyStatsReportKey);
-    let lastDate = 0;
-    if (lastDateString && lastDateString.length > 0) {
-      lastDate = parseInt(lastDateString, 10);
-    }
-
-    if (isNaN(lastDate)) {
-      lastDate = 0;
-    }
-
-    const now = Date.now();
-    return (now - lastDate) > this.reportingFrequency;
+    return this.isDateBefore(
+      localStorage.getItem(LastDailyStatsReportKey),
+      this.reportingFrequency,
+    );
   }
 
   /** Set a timer so we can report the stats when the time comes. */
@@ -326,5 +317,26 @@ export class StatsStore {
       timer.unref();
     }
     return timer;
+  }
+
+  /**
+   * Helper method that returns whether the difference between the current date and the specified date is
+   * less than the specified amount of milliseconds.
+   *
+   * The pass date should be a string representing the number of milliseconds elapsed since
+   * January 1, 1970 00:00:00 UTC.
+   */
+  private isDateBefore(dateAsString: string | null, numMilliseconds: number): boolean {
+    if (!dateAsString || dateAsString.length === 0) {
+      return true;
+    }
+
+    const date = parseInt(dateAsString, 10);
+
+    if (isNaN(date)) {
+      return true;
+    }
+
+    return (Date.now() - date) > numMilliseconds;
   }
 }
