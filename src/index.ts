@@ -177,13 +177,15 @@ export class StatsStore {
     // We use a timed mutex so if for some reason the lock is not released
     // after reporting the metrics the metrics can still be sent after some
     // timeout.
+    // Remember to not perform async operations between the `localStorage.setItem()`
+    // and the `localStorage.getItem()` calls. This way we can take advantage of the
+    // LocalStorage mutex on Chrome: https://www.w3.org/TR/webstorage/#threads
     if (!this.isDateBefore(
       localStorage.getItem(SendingStatsKey),
       TimeoutForReportingLock,
     )) {
       return;
     }
-
     localStorage.setItem(SendingStatsKey, Date.now().toString());
 
     try {
