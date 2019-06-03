@@ -12,11 +12,9 @@ export default class IndexedDBDatabase implements BaseDatabase {
       },
     },
     customEvents: {
-      key: "name",
       value: CustomEvent,
     },
     timingEvents: {
-      key: "name",
       value: TimingEvent,
     },
   }>>;
