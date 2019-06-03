@@ -12,6 +12,9 @@ export const LastDailyStatsReportKey = "last-daily-stats-report";
 /** The localStorage key for whether the user has opted out. */
 export const StatsOptOutKey = "stats-opt-out";
 
+/** The localStorage key that indicates that we're sending the stats to the server. */
+export const SendingStatsKey = "metrics:stats-being-sent";
+
 /** Have we successfully sent the stats opt-in? */
 export const HasSentOptInPingKey = "has-sent-stats-opt-in-ping";
 
@@ -20,6 +23,9 @@ const hours = 60 * 60 * 1000;
 
 /** How often daily stats should be submitted (i.e., 24 hours). */
 export const DailyStatsReportIntervalInMs = hours * 24;
+
+/** After this amount of time we'll. */
+export const TimeoutForReportingLock = hours * 2;
 
 interface Dimensions {
   /** The app version. */
@@ -164,10 +170,26 @@ export class StatsStore {
     if (this.optOut || this.isDevMode) {
       return;
     }
-    const stats = await this.getDailyStats();
+
+    // If multiple instances of `telemetry` are being run from different
+    // renderer process, we want to avoid two instances to send the same
+    // stats.
+    // We use a timed mutex so if for some reason the lock is not released
+    // after reporting the metrics the metrics can still be sent after some
+    // timeout.
+    if (!this.isDateBefore(
+      localStorage.getItem(SendingStatsKey),
+      TimeoutForReportingLock,
+    )) {
+      return;
+    }
+
+    localStorage.setItem(SendingStatsKey, Date.now().toString());
 
     try {
+      const stats = await this.getDailyStats();
       const response = await this.post(stats);
+
       if (response.status !== 200) {
         throw new Error(`Stats reporting failure: ${response.status})`);
       } else {
@@ -179,6 +201,10 @@ export class StatsStore {
       // todo (tt, 5/2018): would be good to log these errors to Haystack/Datadog
       // so we have some kind of visibility into how often things are failing.
       console.log(err);
+    } finally {
+      // Delete the "mutex" used to ensure that stats are not sent at the same time by
+      // two different processes.
+      localStorage.removeItem(SendingStatsKey);
     }
   }
 

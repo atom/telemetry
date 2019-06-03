@@ -112,6 +112,26 @@ describe("StatsStore", function() {
       // event should only be sent the first time even though we call report stats
       sinon.assert.callCount(postStub, 1);
     });
+
+    it("does not report stats twice when called concurrently", async function() {
+      const store1 = new StatsStore(AppName.Atom, version, false, getAccessToken);
+      const store2 = new StatsStore(AppName.Atom, version, false, getAccessToken);
+
+      const stubFetch = sinon.stub(window, "fetch");
+      stubFetch.returns(Promise.resolve(new Response(new ReadableStream(), {
+        status: 200,
+        headers: { "Content-type": "application/json" },
+      })));
+
+      await Promise.all([
+        store1.reportStats(),
+        store2.reportStats(),
+      ]);
+      sinon.assert.calledOnce(stubFetch);
+
+      store1.end();
+      store2.end();
+    });
   });
   describe("addTimer", async function() {
     it("does not add timer in dev mode", async function() {
