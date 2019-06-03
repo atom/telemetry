@@ -28,8 +28,8 @@ describe("StatsStore", function() {
     postStub = sinon.stub(store, "post");
   });
   afterEach(async function() {
+    store.end();
     localStorage.clear();
-
     await store.clearData();
   });
   describe("constructor", function() {
@@ -99,6 +99,8 @@ describe("StatsStore", function() {
       postStub = sinon.stub(storeInDevMode, "post").resolves( { status: 200 });
       await storeInDevMode.reportStats();
       sinon.assert.notCalled(postStub);
+
+      storeInDevMode.end();
     });
     it("sends a single ping event instead of reporting stats if a user has opted out", async function() {
       postStub.resolves({ status: 200 });
@@ -117,6 +119,8 @@ describe("StatsStore", function() {
       await storeInDevMode.addTiming("load", 100);
       const stats = await storeInDevMode.getDailyStats();
       assert.deepEqual(stats.timings, []);
+
+      storeInDevMode.end();
     });
     it("does not add timer if user has opted out", async function() {
       store.setOptOut(true);
@@ -137,6 +141,8 @@ describe("StatsStore", function() {
       await storeInDevMode.incrementCounter(counterName);
       const stats = await storeInDevMode.getDailyStats();
       assert.deepEqual(stats.measures, {});
+
+      storeInDevMode.end();
     });
     it("does not increment counter if user has opted out", async function() {
       store.setOptOut(true);
@@ -152,47 +158,54 @@ describe("StatsStore", function() {
   });
   describe("post", async function() {
     it("sends the auth header if one exists", async function() {
-      store = new StatsStore(AppName.Atom, version, false, getAccessToken);
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
-      await store.reportStats();
+      const storeWithToken = new StatsStore(AppName.Atom, version, false, getAccessToken);
+      const fetch: sinon.SinonStub = sinon.stub(storeWithToken, "fetch").resolves({ status: 200 });
+      await storeWithToken.reportStats();
       assert.deepEqual(fetch.args[0][1].headers, {
         "Content-Type": "application/json",
         "Authorization": `token ${ACCESS_TOKEN}`,
       });
+
+      storeWithToken.end();
     });
     it("does not send the auth header if the auth header is falsy", async function() {
-      store = new StatsStore(AppName.Atom, version, false, () => "");
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
-      await store.reportStats();
+      const storeWithFalseHeader = new StatsStore(AppName.Atom, version, false, () => "");
+      const fetch: sinon.SinonStub = sinon.stub(storeWithFalseHeader, "fetch").resolves({ status: 200 });
+      await storeWithFalseHeader.reportStats();
       assert.deepEqual(fetch.args[0][1].headers, {
         "Content-Type": "application/json",
       });
+
+      storeWithFalseHeader.end();
     });
     it("logs a message in the console when in verbose mode", async function() {
       const consoleLogStub = sinon.stub(console, "log");
 
-      store = new StatsStore(AppName.Atom, version, false, getAccessToken, {verboseMode: true});
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
-      await store.reportStats();
+      const storeVerbose = new StatsStore(AppName.Atom, version, false, getAccessToken, {verboseMode: true});
+      const fetch: sinon.SinonStub = sinon.stub(storeVerbose, "fetch").resolves({ status: 200 });
+      await storeVerbose.reportStats();
       assert.deepEqual(fetch.args[0][1].headers, {
         "Content-Type": "application/json",
         "Authorization": `token ${ACCESS_TOKEN}`,
       });
       sinon.assert.calledWith(consoleLogStub, "Sending metrics");
       consoleLogStub.restore();
+
+      storeVerbose.end();
     });
     it("logs a message in the console when in dev mode and dev logging is enabled", async function() {
       const consoleLogStub = sinon.stub(console, "log");
 
-      store = new StatsStore(AppName.Atom, version, true, getAccessToken, {logInDevMode: true});
-      const fetch: sinon.SinonStub = sinon.stub(store, "fetch").resolves({ status: 200 });
-      await store.reportStats();
+      const storeLogging = new StatsStore(AppName.Atom, version, true, getAccessToken, {logInDevMode: true});
+      const fetch: sinon.SinonStub = sinon.stub(storeLogging, "fetch").resolves({ status: 200 });
+      await storeLogging.reportStats();
       assert.deepEqual(fetch.args[0][1].headers, {
         "Content-Type": "application/json",
         "Authorization": `token ${ACCESS_TOKEN}`,
       });
       sinon.assert.calledWith(consoleLogStub, "Sending metrics");
       consoleLogStub.restore();
+      storeLogging.end();
     });
   });
   describe("setOptOut", async function() {
@@ -205,6 +218,8 @@ describe("StatsStore", function() {
       const storeInDevMode = new StatsStore(AppName.Atom, version, true, getAccessToken);
       await storeInDevMode.setOptOut(true);
       sinon.assert.notCalled(postStub);
+
+      storeInDevMode.end();
     });
     it("sends one status ping when status is changed", async function() {
       const sendPingStub = sinon.stub(store, "sendOptInStatusPing").resolves(true);
@@ -231,14 +246,15 @@ describe("StatsStore", function() {
 
     it("returns true if enough time has elapsed since last report for a custom interval", function() {
       const reportingFrequency = 100;
-
-      store = new StatsStore(AppName.Atom, version, false, getAccessToken, {reportingFrequency});
+      const storeWithFrequency = new StatsStore(AppName.Atom, version, false, getAccessToken, {reportingFrequency});
 
       localStorage.setItem(LastDailyStatsReportKey, (Date.now() - reportingFrequency + 1).toString());
-      assert.isFalse(store.hasReportingIntervalElapsed());
+      assert.isFalse(storeWithFrequency.hasReportingIntervalElapsed());
 
       localStorage.setItem(LastDailyStatsReportKey, (Date.now() - reportingFrequency - 1).toString());
-      assert.isTrue(store.hasReportingIntervalElapsed());
+      assert.isTrue(storeWithFrequency.hasReportingIntervalElapsed());
+
+      storeWithFrequency.end();
     });
   });
   describe("sendOptInStatusPing", async function() {

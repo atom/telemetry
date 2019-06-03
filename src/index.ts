@@ -139,6 +139,10 @@ export class StatsStore {
     }
   }
 
+  public end() {
+    clearInterval(this.timer);
+  }
+
   public setGitHubUser(gitHubUser: string) {
     this.gitHubUser = gitHubUser;
   }
