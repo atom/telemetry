@@ -1,5 +1,6 @@
 import {BaseDatabase, Counters, TimingEvent, CustomEvent} from "./base";
 import {getISODate} from "../util";
+import MemoryDatabase from "./memory";
 import { openDB, IDBPDatabase } from "idb";
 
 export default class IndexedDBDatabase implements BaseDatabase {
@@ -17,7 +18,7 @@ export default class IndexedDBDatabase implements BaseDatabase {
     timingEvents: {
       value: TimingEvent,
     },
-  }> | void>;
+  }> | MemoryDatabase>;
 
   public constructor() {
     this.dbPromise = openDB("atom-telemetry-store", 1, {
@@ -30,12 +31,14 @@ export default class IndexedDBDatabase implements BaseDatabase {
       console.warn(
         "Could not open IndexedDB database to store telemetry events. This session events won't be recorded."
       );
+      return new MemoryDatabase();
     });
   }
 
   public async addCustomEvent(eventType: string, customEvent: object) {
     const db = await this.dbPromise;
-    if (!db) {
+    if (db instanceof MemoryDatabase) {
+      db.addCustomEvent(eventType, customEvent);
       return;
     }
 
@@ -50,7 +53,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
 
   public async incrementCounter(counterName: string) {
     const db = await this.dbPromise;
-    if (!db) {
+    if (db instanceof MemoryDatabase) {
+      db.incrementCounter(counterName);
       return;
     }
 
@@ -65,7 +69,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
 
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata: object = {}) {
     const db = await this.dbPromise;
-    if (!db) {
+    if (db instanceof MemoryDatabase) {
+      db.addTiming(eventType, durationInMilliseconds, metadata);
       return;
     }
 
@@ -81,7 +86,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
 
   public async clearData() {
     const db = await this.dbPromise;
-    if (!db) {
+    if (db instanceof MemoryDatabase) {
+      db.clearData();
       return;
     }
 
@@ -99,8 +105,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
 
   public async getTimings(): Promise<TimingEvent[]> {
     const db = await this.dbPromise;
-    if (!db) {
-      return [];
+    if (db instanceof MemoryDatabase) {
+      return db.getTimings();
     }
 
     return db.getAll("timingEvents");
@@ -108,8 +114,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
 
   public async getCustomEvents(): Promise<CustomEvent[]> {
     const db = await this.dbPromise;
-    if (!db) {
-      return [];
+    if (db instanceof MemoryDatabase) {
+      return db.getCustomEvents();
     }
 
     return db.getAll("customEvents");
@@ -121,8 +127,8 @@ export default class IndexedDBDatabase implements BaseDatabase {
    */
   public async getCounters(): Promise<Counters> {
     const db = await this.dbPromise;
-    if (!db) {
-      return {};
+    if (db instanceof MemoryDatabase) {
+      return db.getCounters();
     }
 
     const counters: Counters = Object.create(null);

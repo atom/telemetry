@@ -2,6 +2,7 @@ import { assert } from "chai";
 import {BaseDatabase} from "../../src/databases/base";
 import LokiDatabase from "../../src/databases/loki";
 import IndexedDBDatabase from "../../src/databases/indexeddb";
+import MemoryDatabase from "../../src/databases/memory";
 
 const grammar = "javascript";
 const openEventType = "open";
@@ -11,7 +12,7 @@ const deprecateEventType = "deprecate";
 const message = "oh noes";
 const deprecateEvent = { message, eventType: deprecateEventType };
 
-for (const DatabaseImpl of [LokiDatabase, IndexedDBDatabase]) {
+for (const DatabaseImpl of [LokiDatabase, IndexedDBDatabase, MemoryDatabase]) {
 describe(`database - ${DatabaseImpl.name}`, async function() {
   const counterName = "commits";
   let database: BaseDatabase;
