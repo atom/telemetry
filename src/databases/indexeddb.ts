@@ -17,7 +17,7 @@ export default class IndexedDBDatabase implements BaseDatabase {
     timingEvents: {
       value: TimingEvent,
     },
-  }>>;
+  }> | void>;
 
   public constructor() {
     this.dbPromise = openDB("atom-telemetry-store", 1, {
@@ -26,21 +26,35 @@ export default class IndexedDBDatabase implements BaseDatabase {
         db.createObjectStore("customEvents", { autoIncrement : true });
         db.createObjectStore("timingEvents", { autoIncrement : true });
       },
+    }).catch(() => {
+      console.warn(
+        "Could not open IndexedDB database to store telemetry events. This session events won't be recorded."
+      );
     });
   }
 
   public async addCustomEvent(eventType: string, customEvent: object) {
+    const db = await this.dbPromise;
+    if (!db) {
+      return;
+    }
+
     const eventToInsert = {
       ...customEvent,
       date: getISODate(),
       eventType,
     };
 
-    (await this.dbPromise).put("customEvents", eventToInsert);
+    db.put("customEvents", eventToInsert);
   }
 
   public async incrementCounter(counterName: string) {
-    const tx = (await this.dbPromise).transaction("counters", "readwrite");
+    const db = await this.dbPromise;
+    if (!db) {
+      return;
+    }
+
+    const tx = db.transaction("counters", "readwrite");
     const entry = await tx.store.get(counterName);
     const currentValue = entry ? entry.value : 0;
 
@@ -50,6 +64,11 @@ export default class IndexedDBDatabase implements BaseDatabase {
   }
 
   public async addTiming(eventType: string, durationInMilliseconds: number, metadata: object = {}) {
+    const db = await this.dbPromise;
+    if (!db) {
+      return;
+    }
+
     const timingData = {
       eventType,
       durationInMilliseconds,
@@ -57,11 +76,16 @@ export default class IndexedDBDatabase implements BaseDatabase {
       date: getISODate(),
     };
 
-    (await this.dbPromise).put("timingEvents", timingData);
+    db.put("timingEvents", timingData);
   }
 
   public async clearData() {
-    const tx = (await this.dbPromise).transaction(
+    const db = await this.dbPromise;
+    if (!db) {
+      return;
+    }
+
+    const tx = db.transaction(
       ["counters", "customEvents", "timingEvents"],
       "readwrite",
     );
@@ -74,11 +98,21 @@ export default class IndexedDBDatabase implements BaseDatabase {
   }
 
   public async getTimings(): Promise<TimingEvent[]> {
-    return (await this.dbPromise).getAll("timingEvents");
+    const db = await this.dbPromise;
+    if (!db) {
+      return [];
+    }
+
+    return db.getAll("timingEvents");
   }
 
   public async getCustomEvents(): Promise<CustomEvent[]> {
-    return (await this.dbPromise).getAll("customEvents");
+    const db = await this.dbPromise;
+    if (!db) {
+      return [];
+    }
+
+    return db.getAll("customEvents");
   }
 
   /**
@@ -86,9 +120,14 @@ export default class IndexedDBDatabase implements BaseDatabase {
    * Returns something like { commits: 7, coAuthoredCommits: 8 }.
    */
   public async getCounters(): Promise<Counters> {
+    const db = await this.dbPromise;
+    if (!db) {
+      return {};
+    }
+
     const counters: Counters = Object.create(null);
 
-    const entries = await (await this.dbPromise).getAll("counters");
+    const entries = await db.getAll("counters");
 
     for (const { name, value } of entries) {
       counters[name] = value;
