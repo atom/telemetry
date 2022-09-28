@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.com/atom/telemetry.svg?token=RwrCnzpsZN5oEq5S5p7V&branch=master)](https://travis-ci.com/atom/telemetry)
+##### Atom and all repositories under Atom will be archived on December 15, 2022. Learn more in our [official announcement](https://github.blog/2022-06-08-sunsetting-atom/)
+ [![Build Status](https://travis-ci.com/atom/telemetry.svg?token=RwrCnzpsZN5oEq5S5p7V&branch=master)](https://travis-ci.com/atom/telemetry)
 
 `telemetry-github` is an open source module written in TypeScript. It sends usage metrics to GitHub's internal analytics pipeline.
 
